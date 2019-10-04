@@ -207,6 +207,11 @@ def main():
     except:
         print(f"Unable to determine Sprint Number from Sprint Name: {current_sprint['name']}")
 
+    sprint_goals = current_sprint['goal'].split("\n")
+
+    print("Sprint Goals:")
+    for goal in sprint_goals:
+        print(f"\t{goal}")
 
     sprint_report = getSprintReport(board_id, current_sprint_id)
 
@@ -216,6 +221,7 @@ def main():
 
     metrics = getSprintMetrics(sprint_report)
 
+    print("Spring Metrics:")
     pprint(metrics)
 
 if __name__ == "__main__":
