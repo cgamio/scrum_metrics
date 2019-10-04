@@ -1,12 +1,12 @@
 # Installation Instructions
 1. Install [Homebrew](https://brew.sh)
-   Homebrew is a package manager for OS X (similar to apt or yum). It's an easy way to install 3rd party tools, and what we'll be using to install the rest of the requirements.
+   - Homebrew is a package manager for OS X (similar to apt or yum). It's an easy way to install 3rd party tools, and what we'll be using to install the rest of the requirements.
 2. Install Python
    `brew install python3`
 3. Install PipEnv
    `pip install pipenv` 
 4. Download / Clone this repository
-   *The rest of these instructions assume that they're being from from within your local repo*
+   - *The rest of these instructions assume that they're being from from within your local repo*
 5. Install Dependencies
    `pipenv install`
 
