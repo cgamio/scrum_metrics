@@ -7,7 +7,7 @@
    `pip install pipenv`
 4. [Create Jira API key](https://confluence.atlassian.com/cloud/api-tokens-938839638.html)
 4. Store API key in .netrc
-   - `mkdir ~/.netrc`
+   - `touch ~/.netrc`
    - `chmod 600 ~/.netrc`
    - `open ~/.netrc`
    - Copy the following format, subsituting [things]
