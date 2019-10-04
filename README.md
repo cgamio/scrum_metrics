@@ -4,7 +4,18 @@
 2. Install Python
    `brew install python3`
 3. Install PipEnv
-   `pip install pipenv` 
+   `pip install pipenv`
+4. [Create Jira API key](https://confluence.atlassian.com/cloud/api-tokens-938839638.html)
+4. Store API key in .netrc
+   - `mkdir ~/.netrc`
+   - `chmod 600 ~/.netrc`
+   - `open .netrc`
+   - Copy the following format, subsituting [things]
+   ```
+   machine thetower.atlassian.net
+   login [your_jira_login]
+   password [your_generated_jira_api_key]
+   ```
 4. Download / Clone this repository
    - *The rest of these instructions assume that they're being from from within your local repo*
 5. Install Dependencies
