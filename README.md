@@ -9,7 +9,7 @@
 4. Store API key in .netrc
    - `mkdir ~/.netrc`
    - `chmod 600 ~/.netrc`
-   - `open .netrc`
+   - `open ~/.netrc`
    - Copy the following format, subsituting [things]
    ```
    machine thetower.atlassian.net
