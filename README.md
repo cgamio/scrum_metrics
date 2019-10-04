@@ -25,11 +25,11 @@ You should now be ready to go!
 
 # General Usage
 Make sure to run the script through pipenv
-`pipenv run python name_of_script.py`
+`pipenv run python3 name_of_script.py`
 
 # Scripts
 ### Sprint Metrics
-Takes a project key, and optional sprint ID as parameters and returns metrics
+Takes a project key, and optional sprint ID as parameters and returns metrics and other sprint information
 ```
 sprint_metrics.py [-h] [-s SPRINT] project
 
@@ -44,31 +44,37 @@ optional arguments:
 
 Example:
 ```
-$ pipenv run python sprint_metrics.py BWSR
+$ pipenv run python3 sprint_metrics.py BWSR -s 3864
 Team: BOWSER
-Sprint Number: 20
+Sprint ID: 3864
+Sprint Number: 19
+Sprint Goals:
+	- Unblock ourselves from finishing Swahili MVP in Sprint 20
+	- Begin work on Badging
+Spring Metrics:
 {
     "items": {
         "bugs_completed": 0,
-        "committed": 11,
-        "completed": 8,
-        "not_completed": 4,
-        "planned_completed": 7,
+        "committed": 0,
+        "completed": 0,
+        "not_completed": 0,
+        "planned_completed": 0,
         "removed": 0,
-        "stories_completed": 6,
+        "stories_completed": 0,
         "unplanned_bugs_completed": 0,
-        "unplanned_completed": 1,
+        "unplanned_completed": 0,
         "unplanned_stories_completed": 0
     },
     "points": {
-        "committed": 29.0,
-        "completed": 21.0,
-        "feature_completed": 21.0,
-        "not_completed": 11.0,
+        "committed": 0,
+        "completed": 0,
+        "feature_completed": 0,
+        "not_completed": 0,
         "optimization_completed": 0,
-        "planned_completed": 18.0,
+        "planned_completed": 0,
         "removed": 0,
-        "unplanned_completed": 3.0
+        "unplanned_completed": 0
     }
 }
+
 ```
