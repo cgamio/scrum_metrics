@@ -33,7 +33,7 @@ optional arguments:
 
 Example:
 ```
-HMDNYC-30R0L413:notion-automation cgamio$ pipenv run python sprint_metrics.py BWSR
+$ pipenv run python sprint_metrics.py BWSR
 Team: BOWSER
 Sprint Number: 20
 {
