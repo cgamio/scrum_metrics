@@ -30,7 +30,7 @@ def makeRequest(verb, url, params=None):
 
 def getBoards(name=None):
     url = f"{jira_url}board?"
-	
+
     if name != None:
         url = f"{url}name={name}"
 
@@ -38,6 +38,11 @@ def getBoards(name=None):
 
 def getCurrentSprintFromBoard(boardID):
     url = f"{jira_url}board/{boardID}/sprint?state=active"
+
+    return makeRequest('GET', url)
+
+def getSprintFromID(sprintID):
+    url = f"{jira_url}sprint/{sprintID}"
 
     return makeRequest('GET', url)
 
@@ -102,7 +107,7 @@ def getSprintMetrics(sprint_report):
             points["planned_completed"] += issue_points
             items["planned_completed"] += 1
 
-        # Story 
+        # Story
         if completed["typeName"] == "Story":
             items["stories_completed"] += 1
             if unplanned:
@@ -160,7 +165,7 @@ def getSprintMetrics(sprint_report):
 
         points["removed"] += issue_points
         items["removed"] += 1
-        
+
     return {
         "points" : points,
         "items" : items
@@ -186,6 +191,7 @@ def main():
     current_sprint_id = None
     if args["sprint"]:
         current_sprint_id = args["sprint"]
+        current_sprint = getSprintFromID(current_sprint_id)
     else:
         try:
             current_sprint = getCurrentSprintFromBoard(board_id)["values"][0]
@@ -193,14 +199,15 @@ def main():
             print ("Sorry, I couldn't find that project's current sprint")
             exit()
 
-        current_sprint_id = current_sprint["id"]
-        try:
-            sprint_number = re.search("(S|Sprint )(?P<number>\d+)", current_sprint["name"]).group('number')
-            print(f"Sprint Number: {sprint_number}")
-        except:
-            print(f"Unable to determine Sprint Number from Sprint Name: {current_sprint['name']}")
-        
-        
+    current_sprint_id = current_sprint["id"]
+    print(f"Sprint ID: {current_sprint_id}")
+    try:
+        sprint_number = re.search("(S|Sprint )(?P<number>\d+)", current_sprint["name"]).group('number')
+        print(f"Sprint Number: {sprint_number}")
+    except:
+        print(f"Unable to determine Sprint Number from Sprint Name: {current_sprint['name']}")
+
+
     sprint_report = getSprintReport(board_id, current_sprint_id)
 
     if not sprint_report:
@@ -210,7 +217,6 @@ def main():
     metrics = getSprintMetrics(sprint_report)
 
     pprint(metrics)
-   
+
 if __name__ == "__main__":
     main()
-
