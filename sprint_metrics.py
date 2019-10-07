@@ -47,6 +47,7 @@ google_entry_translations = {
         "unplanned_completed": 'entry.1333444050'
     }
 },
+#TODO: We're assuming that the project name IS the team name, which isn't always the case
 "project_name": "entry.1082637073",
 "sprint_number": "entry.1975251686"
 }
@@ -72,12 +73,16 @@ def makeRequest(verb, url, params=None):
         return(json.loads(response.text))
     else:
         return(False)
+def getBoardById(board_id):
+    url = f"{jira_url}board/{board_id}"
+
+    return makeRequest('GET', url)
 
 def getBoards(name=None):
     url = f"{jira_url}board?"
 
     if name != None:
-        url = f"{url}name={name}"
+        url = f"{url}name={name}&projectKeyOrId={name}"
 
     return makeRequest('GET', url)
 
@@ -218,29 +223,45 @@ def getSprintMetrics(sprint_report):
 
 def collectSprintData(projectKey, sprintID=False):
     sprint_data = {}
+    board_id = None
     boards = getBoards(projectKey)
     if boards == False or boards["total"] == 0:
         raise Exception ("I couldn't find that project's board")
         exit()
-
-    board_id = boards["values"][0]["id"]
-    sprint_data['project_name'] = boards["values"][0]["location"]["projectName"]
 
     if sprintID:
         sprint_data['sprint_id'] = sprintID
         current_sprint = getSprintFromID(sprint_data['sprint_id'])
 
         if not current_sprint:
-            raise Exception("I couldn't find that sprint number")
+            raise Exception("I couldn't find that sprint id")
             exit()
+
+        board_id = current_sprint['originBoardId']
+        board = getBoardById(board_id)
+        sprint_data['board_name'] = board['name']
+        sprint_data['project_name'] = board["location"]["projectName"]
+
     else:
-        try:
-            current_sprint = getCurrentSprintFromBoard(board_id)["values"][0]
-        except:
-            raise Exception("I couldn't find that project's current sprint")
+        # This is a pretty awful way to handle the fact that projects can have multiple boards, with no specific 'default'
+        #TODO: If using a Slack Bot, we should have a store for projects and their preferred boards. If one isn't registered, we should prompt for a board id and save that.
+        for board in boards['values']:
+            try:
+                current_sprint = getCurrentSprintFromBoard(board['id'])["values"][0]
+                board_id = board['id']
+                sprint_data['board_name'] = board['name']
+                sprint_data['project_name'] = board["location"]["projectName"]
+            except:
+                continue
+
+        if not board_id:
+            raise Exception("I couldn't a board with an active sprint for that project")
             exit()
 
     sprint_data['sprint_id'] = current_sprint['id']
+    sprint_data['sprint_start'] = current_sprint['startDate']
+    sprint_data['sprint_end'] = current_sprint['endDate']
+
     try:
         sprint_data['sprint_number'] = re.search("(S|Sprint )(?P<number>\d+)", current_sprint["name"]).group('number')
     except:
