@@ -18,6 +18,51 @@ auth = HTTPBasicAuth(authTokens[0], authTokens[2])
 # Header Data
 headers = { 'Accept': 'application/json' }
 
+# Google Form Data
+google_form_response_url = 'https://docs.google.com/forms/d/e/1FAIpQLSdF__V1ZMfl6H5q3xIQhSkeZMeCNkOHUdTBFdYA1HBavH31hA/formResponse'
+google_view_form_url = 'https://docs.google.com/forms/d/e/1FAIpQLSdF__V1ZMfl6H5q3xIQhSkeZMeCNkOHUdTBFdYA1HBavH31hA/viewform'
+
+google_entry_translations = {
+"metrics": {
+    "items": {
+        "bugs_completed": 'entry.448087930',
+        "committed": 'entry.2095001800',
+        "completed": 'entry.1399119358',
+        "not_completed": 'entry.128659456',
+        "planned_completed": 'entry.954885633',
+        "removed": 'entry.976792423',
+        "stories_completed": 'entry.1980453543',
+        "unplanned_bugs_completed": 'entry.1252702382',
+        "unplanned_completed": 'entry.485777497',
+        "unplanned_stories_completed": 'entry.370334542'
+    },
+    "points": {
+        "committed": 'entry.1427603868',
+        "completed": 'entry.1486076673',
+        "feature_completed": 'entry.254612996',
+        "not_completed": 'entry.611444996',
+        "optimization_completed": 'entry.2092919144',
+        "planned_completed": 'entry.493624591',
+        "removed": 'entry.976792423',
+        "unplanned_completed": 'entry.1333444050'
+    }
+},
+"project_name": "entry.1082637073",
+"sprint_number": "entry.1975251686"
+}
+
+def generateGoogleFormURL(sprint_data):
+    url = f"{google_view_form_url}?"
+
+    for entry in ["project_name", "sprint_number"]:
+        url += f"{google_entry_translations[entry]}={sprint_data[entry]}&"
+
+    for metric_type in sprint_data['metrics'].keys():
+        for item in sprint_data['metrics'][metric_type].keys():
+            url += f"{google_entry_translations['metrics'][metric_type][item]}={sprint_data['metrics'][metric_type][item]}&"
+
+    return url
+
 def pprint(json_obj):
     print(json.dumps(json_obj, sort_keys=True, indent=4, separators=(",", ": ")))
 
@@ -89,7 +134,7 @@ def getSprintMetrics(sprint_report):
             continue
 
         try:
-            issue_points = completed["currentEstimateStatistic"]["statFieldValue"]["value"]
+            issue_points = int(completed["currentEstimateStatistic"]["statFieldValue"]["value"])
         except:
             issue_points = 0
 
@@ -136,7 +181,7 @@ def getSprintMetrics(sprint_report):
             continue
 
         try:
-            issue_points = incomplete["currentEstimateStatistic"]["statFieldValue"]["value"]
+            issue_points = int(incomplete["currentEstimateStatistic"]["statFieldValue"]["value"])
         except:
             issue_points = 0
 
@@ -155,7 +200,7 @@ def getSprintMetrics(sprint_report):
             continue
 
         try:
-            issue_points = removed["currentEstimateStatistic"]["statFieldValue"]["value"]
+            issue_points = int(removed["currentEstimateStatistic"]["statFieldValue"]["value"])
         except:
             issue_points = 0
 
@@ -224,6 +269,9 @@ def main():
     data = collectSprintData(args['project'], args['sprint'])
 
     pprint(data)
+
+    print("URL:")
+    print(generateGoogleFormURL(data))
 
 if __name__ == "__main__":
     main()
