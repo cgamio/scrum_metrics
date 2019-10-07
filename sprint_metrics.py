@@ -30,7 +30,7 @@ google_entry_translations = {
         "completed": 'entry.1399119358',
         "not_completed": 'entry.128659456',
         "planned_completed": 'entry.954885633',
-        "removed": 'entry.976792423',
+        "removed": 'entry.1137054034',
         "stories_completed": 'entry.1980453543',
         "unplanned_bugs_completed": 'entry.1252702382',
         "unplanned_completed": 'entry.485777497',
