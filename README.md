@@ -44,37 +44,38 @@ optional arguments:
 
 Example:
 ```
-$ pipenv run python3 sprint_metrics.py BWSR -s 3864
-Team: BOWSER
-Sprint ID: 3864
-Sprint Number: 19
-Sprint Goals:
-	- Unblock ourselves from finishing Swahili MVP in Sprint 20
-	- Begin work on Badging
-Spring Metrics:
+$ pipenv run python3 sprint_metrics.py YOSHI -s 3864
 {
-    "items": {
-        "bugs_completed": 0,
-        "committed": 0,
-        "completed": 0,
-        "not_completed": 0,
-        "planned_completed": 0,
-        "removed": 0,
-        "stories_completed": 0,
-        "unplanned_bugs_completed": 0,
-        "unplanned_completed": 0,
-        "unplanned_stories_completed": 0
+    "metrics": {
+        "items": {
+            "bugs_completed": 3,
+            "committed": 17,
+            "completed": 17,
+            "not_completed": 1,
+            "planned_completed": 16,
+            "removed": 0,
+            "stories_completed": 10,
+            "unplanned_bugs_completed": 1,
+            "unplanned_completed": 1,
+            "unplanned_stories_completed": 0
+        },
+        "points": {
+            "committed": 38.0,
+            "completed": 33.0,
+            "feature_completed": 33.0,
+            "not_completed": 5.0,
+            "optimization_completed": 0,
+            "planned_completed": 33.0,
+            "removed": 0,
+            "unplanned_completed": 0
+        }
     },
-    "points": {
-        "committed": 0,
-        "completed": 0,
-        "feature_completed": 0,
-        "not_completed": 0,
-        "optimization_completed": 0,
-        "planned_completed": 0,
-        "removed": 0,
-        "unplanned_completed": 0
-    }
+    "project_name": "YOSHI",
+    "sprint_goals": [
+        "- Unblock ourselves from finishing Swahili MVP in Sprint 20",
+        "- Begin work on Badging"
+    ],
+    "sprint_id": 3864,
+    "sprint_number": "19"
 }
-
 ```

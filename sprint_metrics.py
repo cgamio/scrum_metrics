@@ -171,6 +171,48 @@ def getSprintMetrics(sprint_report):
         "items" : items
     }
 
+def collectSprintData(projectKey, sprintID=False):
+    sprint_data = {}
+    boards = getBoards(projectKey)
+    if boards == False or boards["total"] == 0:
+        raise Exception ("I couldn't find that project's board")
+        exit()
+
+    board_id = boards["values"][0]["id"]
+    sprint_data['project_name'] = boards["values"][0]["location"]["projectName"]
+
+    if sprintID:
+        sprint_data['sprint_id'] = sprintID
+        current_sprint = getSprintFromID(sprint_data['sprint_id'])
+
+        if not current_sprint:
+            raise Exception("I couldn't find that sprint number")
+            exit()
+    else:
+        try:
+            current_sprint = getCurrentSprintFromBoard(board_id)["values"][0]
+        except:
+            raise Exception("I couldn't find that project's current sprint")
+            exit()
+
+    sprint_data['sprint_id'] = current_sprint['id']
+    try:
+        sprint_data['sprint_number'] = re.search("(S|Sprint )(?P<number>\d+)", current_sprint["name"]).group('number')
+    except:
+        raise Exception("I couldn't determine the sprint number from that sprint's name")
+
+    sprint_data['sprint_goals'] = current_sprint['goal'].split("\n")
+
+    sprint_report = getSprintReport(board_id, sprint_data['sprint_id'])
+
+    if not sprint_report:
+        raise Exception("I couldn't find that sprint")
+        exit()
+
+    sprint_data['metrics'] = getSprintMetrics(sprint_report)
+
+    return sprint_data
+
 def main():
     ap = argparse.ArgumentParser()
 
@@ -179,50 +221,9 @@ def main():
 
     args = vars(ap.parse_args())
 
-    boards = getBoards(args["project"])
-    if boards == False or boards["total"] == 0:
-        print ("Sorry, I couldn't find that project's board")
-        exit()
+    data = collectSprintData(args['project'], args['sprint'])
 
-    board_id = boards["values"][0]["id"]
-    project_name = boards["values"][0]["location"]["projectName"]
-    print(f"Team: {project_name}")
-
-    current_sprint_id = None
-    if args["sprint"]:
-        current_sprint_id = args["sprint"]
-        current_sprint = getSprintFromID(current_sprint_id)
-    else:
-        try:
-            current_sprint = getCurrentSprintFromBoard(board_id)["values"][0]
-        except:
-            print ("Sorry, I couldn't find that project's current sprint")
-            exit()
-
-    current_sprint_id = current_sprint["id"]
-    print(f"Sprint ID: {current_sprint_id}")
-    try:
-        sprint_number = re.search("(S|Sprint )(?P<number>\d+)", current_sprint["name"]).group('number')
-        print(f"Sprint Number: {sprint_number}")
-    except:
-        print(f"Unable to determine Sprint Number from Sprint Name: {current_sprint['name']}")
-
-    sprint_goals = current_sprint['goal'].split("\n")
-
-    print("Sprint Goals:")
-    for goal in sprint_goals:
-        print(f"\t{goal}")
-
-    sprint_report = getSprintReport(board_id, current_sprint_id)
-
-    if not sprint_report:
-        print("Unable to find that sprint :(")
-        exit()
-
-    metrics = getSprintMetrics(sprint_report)
-
-    print("Spring Metrics:")
-    pprint(metrics)
+    pprint(data)
 
 if __name__ == "__main__":
     main()
