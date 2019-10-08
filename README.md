@@ -5,6 +5,13 @@
    `brew install python3`
 3. Install PipEnv
    `pip install pipenv`
+   3.1  If you get this error: -bash: pip: command not found
+        Do this first:
+          `curl https://bootstrap.pypa.io/get-pip.py >get-pip.py`
+          `sudo python get-pip.py`
+
+        For more detailed instructions you could check out this video: https://www.youtube.com/watch?v=yBdZZGPpYxg
+        After this you should be able to start step 3 over 
 4. [Create Jira API key](https://confluence.atlassian.com/cloud/api-tokens-938839638.html)
 4. Store API key in .netrc
    - `touch ~/.netrc`
