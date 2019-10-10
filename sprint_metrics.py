@@ -83,7 +83,7 @@ def getBoards(name=None):
     url = f"{jira_url}board?"
 
     if name != None:
-        url = f"{url}name={name}&projectKeyOrId={name}"
+        url = f"{url}projectKeyOrId={name}"
 
     return makeRequest('GET', url)
 
