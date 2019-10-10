@@ -4,6 +4,7 @@ import json
 import netrc
 import argparse
 import re
+import urllib.parse
 
 # URL Data
 jira_host = 'thetower.atlassian.net'
@@ -56,7 +57,7 @@ def generateGoogleFormURL(sprint_data):
     url = f"{google_view_form_url}?"
 
     for entry in ["project_name", "sprint_number"]:
-        url += f"{google_entry_translations[entry]}={sprint_data[entry]}&"
+        url += urllib.parse.quote(f"{google_entry_translations[entry]}={sprint_data[entry]}&", safe='&')
 
     for metric_type in sprint_data['metrics'].keys():
         for item in sprint_data['metrics'][metric_type].keys():
