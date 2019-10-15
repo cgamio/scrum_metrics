@@ -133,7 +133,7 @@ def getSprintMetrics(sprint_report):
     feature_work = ["Story", "Design", "Spike"]
     optimization = ["Optimization"]
     bug = ["Bug"]
-    ignore = ["Task"]
+    ignore = ["Task", "Epic"]
 
     # Completed Work
     for completed in sprint_report["contents"]["completedIssues"]:
