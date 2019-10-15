@@ -57,7 +57,10 @@ def generateGoogleFormURL(sprint_data):
     url = f"{google_view_form_url}?"
 
     for entry in ["project_name", "sprint_number"]:
-        url += urllib.parse.quote(f"{google_entry_translations[entry]}={sprint_data[entry]}&", safe='&')
+        sprint_data[entry] = re.sub(r'[^\w ]', '', sprint_data[entry])
+        print(f"Entry: {sprint_data[entry]}")
+        sprint_data[entry] = urllib.parse.quote(sprint_data[entry])
+        url += f"{google_entry_translations[entry]}={sprint_data[entry]}&"
 
     for metric_type in sprint_data['metrics'].keys():
         for item in sprint_data['metrics'][metric_type].keys():
