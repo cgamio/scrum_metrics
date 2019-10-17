@@ -227,8 +227,8 @@ def getSprintMetrics(sprint_report):
 def getPredictability(sprint_data):
     points = sprint_data['metrics']['points']
     return {
-        "final" : points['completed']/points['committed']*100,
-        "original" : points['planned_completed']/points['committed']*100
+        "Predictability" : points['completed']/points['committed']*100,
+        "Predictability of Commitments" : points['planned_completed']/points['committed']*100
     }
 
 def collectSprintData(projectKey, sprintID=False):
