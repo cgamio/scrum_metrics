@@ -224,6 +224,13 @@ def getSprintMetrics(sprint_report):
         "items" : items
     }
 
+def getPredictability(sprint_data):
+    points = sprint_data['metrics']['points']
+    return {
+        "final" : points['completed']/points['committed']*100,
+        "original" : points['planned_completed']/points['committed']*100
+    }
+
 def collectSprintData(projectKey, sprintID=False):
     sprint_data = {}
     board_id = None
@@ -280,6 +287,7 @@ def collectSprintData(projectKey, sprintID=False):
 
     sprint_data['metrics'] = getSprintMetrics(sprint_report)
 
+    sprint_data['predictability'] = getPredictability(sprint_data)
     return sprint_data
 
 def main():
