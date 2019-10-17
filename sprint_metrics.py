@@ -224,11 +224,18 @@ def getSprintMetrics(sprint_report):
         "items" : items
     }
 
-def getPredictability(sprint_data):
+def getNotionSection(sprint_data):
     points = sprint_data['metrics']['points']
+    items = sprint_data['metrics']['items']
     return {
+        "Points committed": points['committed'],
+        "Points completed": points['completed'],
+        "Items committed": items['committed'],
+        "Items completed": items['completed'],
         "Predictability" : points['completed']/points['committed']*100,
-        "Predictability of Commitments" : points['planned_completed']/points['committed']*100
+        "Predictability of Commitments" : points['planned_completed']/points['committed']*100,
+        "Velocity": points['completed'],
+        "Bugs": items['bugs_completed']
     }
 
 def collectSprintData(projectKey, sprintID=False):
@@ -287,7 +294,7 @@ def collectSprintData(projectKey, sprintID=False):
 
     sprint_data['metrics'] = getSprintMetrics(sprint_report)
 
-    sprint_data['predictability'] = getPredictability(sprint_data)
+    sprint_data['notion'] = getNotionSection(sprint_data)
     return sprint_data
 
 def main():
