@@ -58,7 +58,6 @@ def generateGoogleFormURL(sprint_data):
 
     for entry in ["project_name", "sprint_number"]:
         sprint_data[entry] = re.sub(r'[^\w ]', '', sprint_data[entry])
-        print(f"Entry: {sprint_data[entry]}")
         sprint_data[entry] = urllib.parse.quote(sprint_data[entry])
         url += f"{google_entry_translations[entry]}={sprint_data[entry]}&"
 
