@@ -224,19 +224,19 @@ def getSprintMetrics(sprint_report):
         "items" : items
     }
 
-def getNotionSection(sprint_data):
-    points = sprint_data['metrics']['points']
-    items = sprint_data['metrics']['items']
-    return {
-        "Points committed": points['committed'],
-        "Points completed": points['completed'],
-        "Items committed": items['committed'],
-        "Items completed": items['completed'],
-        "Predictability" : points['completed']/points['committed']*100,
-        "Predictability of Commitments" : points['planned_completed']/points['committed']*100,
-        "Velocity": points['completed'],
-        "Bugs": items['bugs_completed']
-    }
+def getNotionSectionList(sprint_data):
+        points = sprint_data['metrics']['points']
+        items = sprint_data['metrics']['items']
+        return [
+            "Points committed "+str(points['committed']),
+            "Points completed "+str(points['completed']),
+            "Items committed "+str(items['committed']),
+            "Items completed "+str(items['completed']),
+            "Predictability "+str(points['completed']/points['committed']*100),
+            "Predictability of Commitments "+str(points['planned_completed']/points['committed']*100),
+            "Velocity "+str(points['completed']),
+            "Bugs "+str(items['bugs_completed'])
+    ]
 
 def collectSprintData(projectKey, sprintID=False):
     sprint_data = {}
@@ -294,7 +294,6 @@ def collectSprintData(projectKey, sprintID=False):
 
     sprint_data['metrics'] = getSprintMetrics(sprint_report)
 
-    sprint_data['notion'] = getNotionSection(sprint_data)
     return sprint_data
 
 def main():
@@ -306,11 +305,17 @@ def main():
     args = vars(ap.parse_args())
 
     data = collectSprintData(args['project'], args['sprint'])
+    notion = getNotionSectionList(data)
 
     pprint(data)
 
+
     print("URL:")
     print(generateGoogleFormURL(data))
+
+    print("")
+    print("Notion:")
+    pprint(notion)
 
 if __name__ == "__main__":
     main()
