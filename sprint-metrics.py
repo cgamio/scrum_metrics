@@ -313,8 +313,8 @@ def sprint_report_url_task(response_url, text):
     data = {}
 
     try:
-        data = collectSprintData(*args)
-        url=generateGoogleFormURL(data)
+        sprint_data = collectSprintData(*args)
+        url=generateGoogleFormURL(sprint_data)
         data = {
             'response_type': 'in_channel',
             'text': f"Here you go!\n{url}",
