@@ -13,18 +13,18 @@
        ```
 
         For more detailed instructions you could check out [this video](https://www.youtube.com/watch?v=yBdZZGPpYxg).
-        After this you should be able to start step 3 over 
+        After this you should be able to start step 3 over
 4. [Create Jira API key](https://confluence.atlassian.com/cloud/api-tokens-938839638.html)
-4. Store API key in .netrc
-   - `touch ~/.netrc`
-   - `chmod 600 ~/.netrc`
-   - `open ~/.netrc`
-   - Copy the following format, subsituting [things]
+4. Set up Environment Variables
+   - `touch ~/.bashrc`
+   - `open ~/.bash`
+   - Add the following lines to the file in the following format, subsituting [things]
    ```
-   machine thetower.atlassian.net
-   login [your_jira_login]
-   password [your_generated_jira_api_key]
+   export JIRA_HOST='thetower.atlassian.net'
+   export JIRA_TOKEN='[your jira token]'
+   export JIRA_USER='[your jira login]'
    ```
+   - Open a new terminal, or run the following command to load new environment variables `source ~/.bashrc`
 4. Download / Clone this repository
    - *The rest of these instructions assume that they're being from from within your local repo*
 5. Install Dependencies
@@ -34,59 +34,53 @@ You should now be ready to go!
 
 # General Usage
 Make sure to run the script through pipenv
-`pipenv run python3 name_of_script.py`
+`pipenv run python3 name_of_script.py` for one-off commands or `pipenv shell` to run multiple commands without needing to specify `pipenv run python3` before each one.
 
 # Scripts
 ### Sprint Metrics
-Takes a project key, and optional sprint ID as parameters and returns metrics and other sprint information
-```
-sprint_metrics.py [-h] [-s SPRINT] project
-
-positional arguments:
-  project               Project Key
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -s SPRINT, --sprint SPRINT
-                        Sprint ID (default to current sprint)
-```
+This script no longer has a main function, and instead the driving force behind the slack slash commands running in Lambda. You can still access the functions in the script locally by running python in interactive mode
 
 Example:
 ```
-$ pipenv run python3 sprint_metrics.py YOSHI -s 3864
+$ pipenv shell
+(scrum_metrics) bash-3.2$ python -i sprint-metrics.py
+>>> sprint_data = collectSprintData("YOSHI")
+>>> pprint(sprint_data)
 {
+    "board_name": "YOSHI BOARD",
     "metrics": {
         "items": {
-            "bugs_completed": 3,
-            "committed": 17,
-            "completed": 17,
-            "not_completed": 1,
-            "planned_completed": 16,
+            "bugs_completed": 0,
+            "committed": 10,
+            "completed": 0,
+            "not_completed": 10,
+            "planned_completed": 0,
             "removed": 0,
-            "stories_completed": 10,
-            "unplanned_bugs_completed": 1,
-            "unplanned_completed": 1,
+            "stories_completed": 0,
+            "unplanned_bugs_completed": 0,
+            "unplanned_completed": 0,
             "unplanned_stories_completed": 0
         },
         "points": {
-            "committed": 38.0,
-            "completed": 33.0,
-            "feature_completed": 33.0,
-            "not_completed": 5.0,
+            "committed": 30,
+            "completed": 0,
+            "feature_completed": 0,
+            "not_completed": 30,
             "optimization_completed": 0,
-            "planned_completed": 33.0,
+            "planned_completed": 0,
             "removed": 0,
             "unplanned_completed": 0
         }
     },
     "project_name": "YOSHI",
+    "sprint_end": "2019-11-06T20:01:00.000Z",
     "sprint_goals": [
-        "- Unblock ourselves from finishing Swahili MVP in Sprint 20",
-        "- Begin work on Badging"
+        "Goals:",
+        "1. Hide all ads on content and feed pages for \"ads-free\" users",
+        "2. Determine the work involved for rendering social images for \"ads-free\" users"
     ],
-    "sprint_id": 3864,
-    "sprint_number": "19"
+    "sprint_id": 4013,
+    "sprint_number": "22",
+    "sprint_start": "2019-10-23T20:01:17.081Z"
 }
-URL:
-https://docs.google.com/forms/d/e/1FAIpQLSdF__V1ZMfl6H5q3xIQhSkeZMeCNkOHUdTBFdYA1HBavH31hA/viewform?entry.1082637073=YOSHI&entry.1975251686=19&entry.1427603868=38&entry.1486076673=33&entry.493624591=33&entry.1333444050=0&entry.254612996=33&entry.2092919144=0&entry.611444996=5&entry.976792423=0&entry.2095001800=17&entry.1399119358=17&entry.954885633=16&entry.485777497=1&entry.1980453543=10&entry.370334542=0&entry.448087930=3&entry.1252702382=1&entry.128659456=1&entry.976792423=0&
 ```
