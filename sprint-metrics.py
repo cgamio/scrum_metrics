@@ -345,8 +345,8 @@ def sprint_report_url():
     if 'help' in request_text:
         response_text = (
             'Use this generate sprint report auto-fill URLs'
-            'Call it with just a team name (i.e., `/sprint-report YOSHI`) to use the currently open sprint for that board. '
-            'Call it with a team name and a sprint ID (e.g., `/sprint-report YOSHI 1234 `) to use a specific sprint.'
+            'Call it with just a team name (i.e., `/sprint-report-url YOSHI`) to use the currently open sprint for that board. '
+            'Call it with a team name and a sprint ID (e.g., `/sprint-report-url YOSHI 1234 `) to use a specific sprint.'
         )
 
         return jsonify(
