@@ -56,8 +56,6 @@ google_entry_translations = {
 "sprint_number": "entry.1975251686"
 }
 
-print("Got through initial setup!")
-
 def generateGoogleFormURL(sprint_data):
     url = f"{google_view_form_url}?"
 
@@ -311,7 +309,6 @@ def is_request_valid(request):
 
 @task
 def sprint_report_url_task(response_url, text):
-    print("Running sprint report task")
     args = text.split()
     data = {}
 
@@ -334,13 +331,10 @@ def sprint_report_url_task(response_url, text):
 
 @app.route('/sprint-report-url', methods=['POST'])
 def sprint_report_url():
-    print("Request received")
     if not is_request_valid(request):
         abort(400)
 
     request_text = request.form['text']
-
-    print(f"Request Text: {request_text}")
 
     if 'help' in request_text:
         response_text = (
