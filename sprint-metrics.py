@@ -354,3 +354,52 @@ def sprint_report_url():
             response_type='in_channel',
             text="Let me think...",
         )
+
+@task
+def sprint_stats_task(response_url, text):
+    args = text.split()
+    data = {}
+
+    try:
+        sprint_data = collectSprintData(*args)
+        stats = getNotionSectionList(sprint_data)
+        stats_string = "\n".join(stats)
+        data = {
+            'response_type': 'in_channel',
+            'text': f"Here are those stats:\n{stats_string}",
+        }
+    except BaseException as e:
+        print(e)
+        traceback.print_exc()
+        data = {
+            'response_type': 'in_channel',
+            'text': str(e),
+        }
+
+    requests.post(response_url, json=data)
+
+@app.route('/sprint-stats', methods=['POST'])
+def sprint_stats():
+    if not is_request_valid(request):
+        abort(400)
+
+    request_text = request.form['text']
+
+    if 'help' in request_text:
+        response_text = (
+            'Use this get helpful sprint statistics'
+            'Call it with just a team name (i.e., `/sprint-stats YOSHI`) to use the currently open sprint for that board. '
+            'Call it with a team name and a sprint ID (e.g., `/sprint-stats YOSHI 1234 `) to use a specific sprint.'
+        )
+
+        return jsonify(
+            response_type='in_channel',
+            text=response_text,
+        )
+    else:
+        sprint_stats_task(request.form['response_url'], request_text)
+
+        return jsonify(
+            response_type='in_channel',
+            text="Let me think...",
+        )
