@@ -6,8 +6,9 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-notion = "*"
 jira = "*"
+flask = "*"
+zappa = "*"
 requests = "*"
 
 [requires]

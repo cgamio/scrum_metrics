@@ -1,20 +1,23 @@
 import requests
 from requests.auth import HTTPBasicAuth
 import json
-import netrc
 import argparse
 import re
 import urllib.parse
+import os
+import traceback
+from flask import abort, Flask, jsonify, request
+from zappa.asynchronous import task
 
 # URL Data
-jira_host = 'thetower.atlassian.net'
+jira_host = os.environ.get('JIRA_HOST')
 jira_url = f"https://{jira_host}/rest/agile/1.0/"
 greenhopper_url = f"https://{jira_host}/rest/greenhopper/1.0/"
 
 # Auth Data
-netrc = netrc.netrc()
-authTokens = netrc.authenticators(jira_host)
-auth = HTTPBasicAuth(authTokens[0], authTokens[2])
+JIRA_USER = os.environ.get('JIRA_USER')
+JIRA_TOKEN = os.environ.get('JIRA_TOKEN')
+auth = HTTPBasicAuth(JIRA_USER, JIRA_TOKEN)
 
 # Header Data
 headers = { 'Accept': 'application/json' }
@@ -52,6 +55,8 @@ google_entry_translations = {
 "project_name": "entry.1082637073",
 "sprint_number": "entry.1975251686"
 }
+
+print("Got through initial setup!")
 
 def generateGoogleFormURL(sprint_data):
     url = f"{google_view_form_url}?"
@@ -296,26 +301,62 @@ def collectSprintData(projectKey, sprintID=False):
 
     return sprint_data
 
-def main():
-    ap = argparse.ArgumentParser()
+app = Flask(__name__)
 
-    ap.add_argument("project", help="Project Key")
-    ap.add_argument("-s", "--sprint", required=False, help="Sprint ID (default to current sprint)")
+def is_request_valid(request):
+    is_token_valid = request.form['token'] == os.environ['SLACK_VERIFICATION_TOKEN']
+    is_team_id_valid = request.form['team_id'] == os.environ['SLACK_TEAM_ID']
 
-    args = vars(ap.parse_args())
+    return is_token_valid and is_team_id_valid
 
-    data = collectSprintData(args['project'], args['sprint'])
-    notion = getNotionSectionList(data)
+@task
+def sprint_report_url_task(response_url, text):
+    print("Running sprint report task")
+    args = text.split()
+    data = {}
 
-    pprint(data)
+    try:
+        data = collectSprintData(*args)
+        url=generateGoogleFormURL(data)
+        data = {
+            'response_type': 'in_channel',
+            'text': f"Here you go!\n{url}",
+        }
+    except BaseException as e:
+        print(e)
+        traceback.print_exc()
+        data = {
+            'response_type': 'in_channel',
+            'text': str(e),
+        }
 
+    requests.post(response_url, json=data)
 
-    print("URL:")
-    print(generateGoogleFormURL(data))
+@app.route('/sprint-report-url', methods=['POST'])
+def sprint_report_url():
+    print("Request received")
+    if not is_request_valid(request):
+        abort(400)
 
-    print("")
-    print("Notion:")
-    pprint(notion)
+    request_text = request.form['text']
 
-if __name__ == "__main__":
-    main()
+    print(f"Request Text: {request_text}")
+
+    if 'help' in request_text:
+        response_text = (
+            'Use this generate sprint report auto-fill URLs'
+            'Call it with just a team name (i.e., `/sprint-report YOSHI`) to use the currently open sprint for that board. '
+            'Call it with a team name and a sprint ID (e.g., `/sprint-report YOSHI 1234 `) to use a specific sprint.'
+        )
+
+        return jsonify(
+            response_type='in_channel',
+            text=response_text,
+        )
+    else:
+        sprint_report_url_task(request.form['response_url'], request_text)
+
+        return jsonify(
+            response_type='in_channel',
+            text="Let me think...",
+        )
