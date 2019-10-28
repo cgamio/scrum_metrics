@@ -299,6 +299,83 @@ def collectSprintData(projectKey, sprintID=False):
 
     return sprint_data
 
+def get_sprint_report_slack_blocks(data):
+    blocks = []
+    divider_block = {
+			"type": "divider"
+		}
+
+    gif_block = {
+			"type": "image",
+			"title": {
+				"type": "plain_text",
+				"text": "Order Up!"
+			},
+			"image_url": "https://media.giphy.com/media/l1JojmmBMELYFKJc4/giphy.gif",
+			"alt_text": "Order Up!"
+		}
+    blocks.append(gif_block)
+    blocks.append(divider_block)
+
+    goals_string = '\n'.join(data['sprint_goals'])
+    report_details_block = {
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": f"*Project Name*: {data['project_name']}\n*Sprint {data['sprint_number']}*\n{goals_string}"
+			}
+		}
+    blocks.append(report_details_block)
+    blocks.append(divider_block)
+
+    sprint_metrics = []
+    for type in data['metrics'].keys():
+        type_block = {
+    			"type": "section",
+    			"text": {
+    				"type": "mrkdwn",
+    				"text": f"*{type}*"
+    			}
+    		}
+        blocks.append(type_block)
+
+        for metric in data['metrics'][type].keys():
+            sprint_metrics.append({
+					"type": "plain_text",
+					"text": f"{metric}"
+				})
+            sprint_metrics.append({
+					"type": "plain_text",
+					"text": f"{data['metrics'][type][metric]}"
+				})
+            if len(sprint_metrics) > 8:
+                blocks.append({
+            			"type": "section",
+            			"fields": sprint_metrics
+                })
+                sprint_metrics = []
+
+        if len(sprint_metrics) > 0:
+            sprint_metrics_block = {
+        			"type": "section",
+        			"fields": sprint_metrics
+            }
+            blocks.append(sprint_metrics_block)
+            sprint_metrics = []
+
+    blocks.append(divider_block)
+    blocks.append({
+		"type": "section",
+		"text": {
+			"type": "mrkdwn",
+			"text": f"<{generateGoogleFormURL(data)}|Google Form URL>"
+		}
+	})
+
+    return {
+        "blocks": blocks
+        }
+
 app = Flask(__name__)
 
 def is_request_valid(request):
@@ -398,6 +475,51 @@ def sprint_stats():
         )
     else:
         sprint_stats_task(request.form['response_url'], request_text)
+
+        return jsonify(
+            response_type='in_channel',
+            text="Let me think...",
+        )
+
+@task
+def sprint_report_task(response_url, text):
+    args = text.split()
+    data = {}
+
+    try:
+        sprint_data = collectSprintData(*args)
+        data = get_sprint_report_slack_blocks(sprint_data)
+        data['response_type'] = 'in_channel'
+    except BaseException as e:
+        print(e)
+        traceback.print_exc()
+        data = {
+            'response_type': 'in_channel',
+            'text': str(e),
+        }
+
+    requests.post(response_url, json=data)
+
+@app.route('/sprint-report', methods=['POST'])
+def sprint_report():
+    if not is_request_valid(request):
+        abort(400)
+
+    request_text = request.form['text']
+
+    if 'help' in request_text:
+        response_text = (
+            'Use this generate sprint report information'
+            'Call it with just a team name (i.e., `/sprint-report YOSHI`) to use the currently open sprint for that board. '
+            'Call it with a team name and a sprint ID (e.g., `/sprint-report YOSHI 1234 `) to use a specific sprint.'
+        )
+
+        return jsonify(
+            response_type='in_channel',
+            text=response_text,
+        )
+    else:
+        sprint_report_task(request.form['response_url'], request_text)
 
         return jsonify(
             response_type='in_channel',
