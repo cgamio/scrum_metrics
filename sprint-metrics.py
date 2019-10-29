@@ -525,3 +525,14 @@ def sprint_report():
             response_type='in_channel',
             text="Let me think...",
         )
+
+@app.route('/bot-event', methods=['POST'])
+def bot_handler():
+
+    request.data = request.get_data()
+    pprint(request.form)
+    if request.form['type'] == 'url_verification':
+        return request
+
+    if not is_request_valid(request):
+        abort(400)
