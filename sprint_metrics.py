@@ -223,20 +223,46 @@ def getSprintMetrics(sprint_report):
         "points" : points,
         "items" : items
     }
+def getVelocityReport(board_id):
+    url = f"{greenhopper_url}rapid/charts/velocity?rapidViewId={board_id}"
 
-def getNotionSection(sprint_data):
+    return makeRequest('GET', url)
+
+def getAvgVelocity(board_id, sprintID):
+    velocityReport = getVelocityReport(board_id)
+    velocityEntries = velocityReport['velocityStatEntries']
+
+    threeSprintVelocityTotal = 0
+    sprintCounter = 0
+    for velocityEntryKey in sorted(velocityEntries.keys(), reverse=True):
+
+        if sprintCounter > 2:
+            continue
+        elif sprintCounter > 0:
+            sprintCounter = sprintCounter + 1
+            threeSprintVelocityTotal = threeSprintVelocityTotal+velocityEntries[velocityEntryKey]['completed']['value']
+        elif str(velocityEntryKey) == str(sprintID):
+            print(velocityEntryKey)
+            print(velocityEntries[velocityEntryKey])
+            threeSprintVelocityTotal = velocityEntries[velocityEntryKey]['completed']['value']
+            sprintCounter = sprintCounter + 1
+
+    return threeSprintVelocityTotal/sprintCounter
+
+def getNotionSection(sprint_data, boardID):
     points = sprint_data['metrics']['points']
     items = sprint_data['metrics']['items']
-    return {
-        "Points committed": points['committed'],
-        "Points completed": points['completed'],
-        "Items committed": items['committed'],
-        "Items completed": items['completed'],
-        "Predictability" : points['completed']/points['committed']*100,
-        "Predictability of Commitments" : points['planned_completed']/points['committed']*100,
-        "Velocity": points['completed'],
-        "Bugs": items['bugs_completed']
-    }
+    avgVelocity = getAvgVelocity(boardID, sprint_data['sprint_id'])
+    return [
+            "Points committed "+str(points['committed']),
+            "Points completed "+str(points['completed']),
+            "Items committed "+str(items['committed']),
+            "Items completed "+str(items['completed']),
+            "Predictability "+str('{:6.2f}'.format(points['completed']/points['committed']*100))+"%",
+            "Predictability of Commitments "+str('{:6.2f}'.format(points['planned_completed']/points['committed']*100))+"%",
+            "Average Velocity (Three Sprints) "+str('{:6.2f}'.format(avgVelocity)),
+            "Bugs "+str(items['bugs_completed'])
+    ]
 
 def collectSprintData(projectKey, sprintID=False):
     sprint_data = {}
@@ -294,7 +320,7 @@ def collectSprintData(projectKey, sprintID=False):
 
     sprint_data['metrics'] = getSprintMetrics(sprint_report)
 
-    sprint_data['notion'] = getNotionSection(sprint_data)
+    sprint_data['notion'] = getNotionSection(sprint_data, board_id)
     return sprint_data
 
 def main():
