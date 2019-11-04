@@ -10,6 +10,7 @@ import urllib.parse
 jira_host = 'thetower.atlassian.net'
 jira_url = f"https://{jira_host}/rest/agile/1.0/"
 greenhopper_url = f"https://{jira_host}/rest/greenhopper/1.0/"
+jira_query_url = f"https://{jira_host}/issues/?jql=issueKey in ("
 
 # Auth Data
 netrc = netrc.netrc()
@@ -242,17 +243,29 @@ def getAvgVelocity(board_id, sprintID):
             sprintCounter = sprintCounter + 1
             threeSprintVelocityTotal = threeSprintVelocityTotal+velocityEntries[velocityEntryKey]['completed']['value']
         elif str(velocityEntryKey) == str(sprintID):
-            print(velocityEntryKey)
-            print(velocityEntries[velocityEntryKey])
             threeSprintVelocityTotal = velocityEntries[velocityEntryKey]['completed']['value']
             sprintCounter = sprintCounter + 1
 
     return threeSprintVelocityTotal/sprintCounter
 
-def getNotionSection(sprint_data, boardID):
+
+def getListOfIssueIdsStr(listOfIssues):
+    listOfIssueIdsStr = ""
+    for issue in listOfIssues:
+        if (listOfIssueIdsStr == ""):
+            listOfIssueIdsStr = str(issue["key"])
+        else:
+            listOfIssueIdsStr = listOfIssueIdsStr + "," + str(issue["key"])
+
+    return listOfIssueIdsStr
+
+def getNotionSection(sprint_data, boardID, sprint_report):
     points = sprint_data['metrics']['points']
     items = sprint_data['metrics']['items']
     avgVelocity = getAvgVelocity(boardID, sprint_data['sprint_id'])
+    completedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["completedIssues"])
+    notCompletedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["issuesNotCompletedInCurrentSprint"])
+    removedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["puntedIssues"])
     return [
             "Points committed "+str(points['committed']),
             "Points completed "+str(points['completed']),
@@ -261,7 +274,10 @@ def getNotionSection(sprint_data, boardID):
             "Predictability "+str('{:6.2f}'.format(points['completed']/points['committed']*100))+"%",
             "Predictability of Commitments "+str('{:6.2f}'.format(points['planned_completed']/points['committed']*100))+"%",
             "Average Velocity (Three Sprints) "+str('{:6.2f}'.format(avgVelocity)),
-            "Bugs "+str(items['bugs_completed'])
+            "Bugs "+str(items['bugs_completed']),
+            "Completed Issues URL: " + jira_query_url + completedIssuesIds + ")",
+            "Not Completed Issues URL: " + jira_query_url + notCompletedIssuesIds + ")",
+            "Removed Issues URL: " + jira_query_url + removedIssuesIds + ")"
     ]
 
 def collectSprintData(projectKey, sprintID=False):
@@ -320,7 +336,7 @@ def collectSprintData(projectKey, sprintID=False):
 
     sprint_data['metrics'] = getSprintMetrics(sprint_report)
 
-    sprint_data['notion'] = getNotionSection(sprint_data, board_id)
+    sprint_data['notion'] = getNotionSection(sprint_data, board_id, sprint_report)
     return sprint_data
 
 def main():
