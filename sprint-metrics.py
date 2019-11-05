@@ -371,6 +371,18 @@ def get_sprint_report_slack_blocks(data):
     blocks.append(report_details_block)
     blocks.append(divider_block)
 
+    notion_string = "\n".join(data['notion'])
+    blocks.append({
+		"type": "section",
+		"text": {
+			"type": "mrkdwn",
+			"text": f"{notion_string}"
+		}
+	})
+
+
+    blocks.append(divider_block)
+
     sprint_metrics = []
     for type in data['metrics'].keys():
         type_block = {
@@ -412,15 +424,6 @@ def get_sprint_report_slack_blocks(data):
 		"text": {
 			"type": "mrkdwn",
 			"text": f"<{generateGoogleFormURL(data)}|Google Form URL>"
-		}
-	})
-
-    blocks.append(divider_block)
-    blocks.append({
-		"type": "section",
-		"text": {
-			"type": "mrkdwn",
-			"text": f"<{data['notion']}|Google Form URL>"
 		}
 	})
 
