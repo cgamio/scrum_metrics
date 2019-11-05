@@ -13,6 +13,7 @@ from zappa.asynchronous import task
 jira_host = os.environ.get('JIRA_HOST')
 jira_url = f"https://{jira_host}/rest/agile/1.0/"
 greenhopper_url = f"https://{jira_host}/rest/greenhopper/1.0/"
+jira_query_url = f"https://{jira_host}/issues/?jql=issueKey in ("
 
 # Auth Data
 JIRA_USER = os.environ.get('JIRA_USER')
@@ -226,19 +227,60 @@ def getSprintMetrics(sprint_report):
         "points" : points,
         "items" : items
     }
+def getVelocityReport(board_id):
+    url = f"{greenhopper_url}rapid/charts/velocity?rapidViewId={board_id}"
 
-def getNotionSectionList(sprint_data):
-        points = sprint_data['metrics']['points']
-        items = sprint_data['metrics']['items']
-        return [
+    return makeRequest('GET', url)
+
+def getAvgVelocity(board_id, sprintID):
+    velocityReport = getVelocityReport(board_id)
+    velocityEntries = velocityReport['velocityStatEntries']
+
+    threeSprintVelocityTotal = 0
+    sprintCounter = 0
+    for velocityEntryKey in sorted(velocityEntries.keys(), reverse=True):
+
+        if sprintCounter > 2:
+            continue
+        elif sprintCounter > 0:
+            sprintCounter = sprintCounter + 1
+            threeSprintVelocityTotal = threeSprintVelocityTotal+velocityEntries[velocityEntryKey]['completed']['value']
+        elif str(velocityEntryKey) == str(sprintID):
+            threeSprintVelocityTotal = velocityEntries[velocityEntryKey]['completed']['value']
+            sprintCounter = sprintCounter + 1
+
+    return threeSprintVelocityTotal/sprintCounter
+
+
+def getListOfIssueIdsStr(listOfIssues):
+    listOfIssueIdsStr = ""
+    for issue in listOfIssues:
+        if (listOfIssueIdsStr == ""):
+            listOfIssueIdsStr = str(issue["key"])
+        else:
+            listOfIssueIdsStr = listOfIssueIdsStr + "," + str(issue["key"])
+
+    return listOfIssueIdsStr
+
+def getNotionSection(sprint_data, boardID, sprint_report):
+    points = sprint_data['metrics']['points']
+    items = sprint_data['metrics']['items']
+    avgVelocity = getAvgVelocity(boardID, sprint_data['sprint_id'])
+    completedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["completedIssues"])
+    notCompletedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["issuesNotCompletedInCurrentSprint"])
+    removedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["puntedIssues"])
+    return [
             "Points committed "+str(points['committed']),
             "Points completed "+str(points['completed']),
             "Items committed "+str(items['committed']),
             "Items completed "+str(items['completed']),
-            "Predictability "+str(points['completed']/points['committed']*100),
-            "Predictability of Commitments "+str(points['planned_completed']/points['committed']*100),
-            "Velocity "+str(points['completed']),
-            "Bugs "+str(items['bugs_completed'])
+            "Predictability "+str('{:6.2f}'.format(points['completed']/points['committed']*100))+"%",
+            "Predictability of Commitments "+str('{:6.2f}'.format(points['planned_completed']/points['committed']*100))+"%",
+            "Average Velocity (Three Sprints) "+str('{:6.2f}'.format(avgVelocity)),
+            "Bugs "+str(items['bugs_completed']),
+            "Completed Issues URL: " + jira_query_url + completedIssuesIds + ")",
+            "Not Completed Issues URL: " + jira_query_url + notCompletedIssuesIds + ")",
+            "Removed Issues URL: " + jira_query_url + removedIssuesIds + ")"
     ]
 
 def collectSprintData(projectKey, sprintID=False):
@@ -297,6 +339,7 @@ def collectSprintData(projectKey, sprintID=False):
 
     sprint_data['metrics'] = getSprintMetrics(sprint_report)
 
+    sprint_data['notion'] = getNotionSection(sprint_data, board_id, sprint_report)
     return sprint_data
 
 def get_sprint_report_slack_blocks(data):
@@ -369,6 +412,15 @@ def get_sprint_report_slack_blocks(data):
 		"text": {
 			"type": "mrkdwn",
 			"text": f"<{generateGoogleFormURL(data)}|Google Form URL>"
+		}
+	})
+
+    blocks.append(divider_block)
+    blocks.append({
+		"type": "section",
+		"text": {
+			"type": "mrkdwn",
+			"text": f"<{data['notion']}|Google Form URL>"
 		}
 	})
 
