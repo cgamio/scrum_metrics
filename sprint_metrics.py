@@ -144,9 +144,9 @@ def getSprintMetrics(sprint_report):
             continue
 
         try:
-            issue_points = int(completed["currentEstimateStatistic"]["statFieldValue"]["value"])
+            issue_points_original = int(completed["estimateStatistic"]["statFieldValue"]["value"])
         except:
-            issue_points = 0
+            issue_points_original = 0
 
         points["completed"] += issue_points
         items["completed"] += 1
@@ -154,14 +154,17 @@ def getSprintMetrics(sprint_report):
         unplanned = False
         if completed["key"] in sprint_report["contents"]["issueKeysAddedDuringSprint"].keys():
             unplanned = True
-            points["unplanned_completed"] += issue_points
+            points["unplanned_completed"] += issue_points_original
             items["unplanned_completed"] += 1
         else:
-            points["committed"] += issue_points
-            items["committed"] += 1
-            points["planned_completed"] += issue_points
-            items["planned_completed"] += 1
 
+            points["committed"] += issue_points_original
+            items["committed"] += 1
+            points["planned_completed"] += issue_points_original
+            items["planned_completed"] += 1
+            if issue_points_original != issue_points:
+                points["unplanned_completed"] += issue_points-issue_points_original
+                
         # Story
         if completed["typeName"] == "Story":
             items["stories_completed"] += 1
@@ -278,9 +281,9 @@ def getNotionSection(sprint_data, boardID, sprint_report):
             "Predictability of Commitments "+str('{:6.2f}'.format(points['planned_completed']/points['committed']*100))+"%",
             "Average Velocity (Three Sprints) "+str('{:6.2f}'.format(avgVelocity)),
             "Bugs "+str(items['bugs_completed']),
-            "Completed Issues URL: " + jira_query_url +  urllib.parse.quote(jira_query_jql + completedIssuesIds + ")"),
-            "Not Completed Issues URL: " + jira_query_url+ urllib.parse.quote(jira_query_jql + notCompletedIssuesIds + ")"),
-            "Removed Issues URL: " + jira_query_url+ urllib.parse.quote(jira_query_jql + removedIssuesIds + ")")
+            "Completed Issues URL ("+str(len(sprint_report["contents"]["completedIssues"]))+"): " + jira_query_url + completedIssuesIds + ")",
+            "Not Completed Issues URL ("+str(len(sprint_report["contents"]["issuesNotCompletedInCurrentSprint"]))+"): " + jira_query_url + notCompletedIssuesIds + ")",
+            "Removed Issues URL ("+str(len(sprint_report["contents"]["puntedIssues"]))+"): " + jira_query_url + removedIssuesIds + ")"
     ]
 
 def collectSprintData(projectKey, sprintID=False):
