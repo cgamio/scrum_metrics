@@ -1,6 +1,6 @@
 {
   "prod": {
-    "app_function": "sprint-metrics.app",
+    "app_function": "sprint_metrics.app",
     "aws_region": "us-east-1",
     "exclude": [
       "__pycache__",
@@ -22,7 +22,7 @@
     "timeout_seconds": 30,
   },
   "dev": {
-    "app_function": "sprint-metrics.app",
+    "app_function": "sprint_metrics.app",
     "aws_region": "us-east-1",
     "exclude": [
       "__pycache__",
