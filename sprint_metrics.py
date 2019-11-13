@@ -149,9 +149,9 @@ def getSprintMetrics(sprint_report):
             issue_points_original = 0
 
         try:
-            issue_points_original = int(completed["estimateStatistic"]["statFieldValue"]["value"])
+            issue_points = int(completed["currentEstimateStatistic"]["statFieldValue"]["value"])
         except:
-            issue_points_original = 0
+            issue_points = 0
 
         points["completed"] += issue_points
         items["completed"] += 1
@@ -162,12 +162,11 @@ def getSprintMetrics(sprint_report):
             points["unplanned_completed"] += issue_points_original
             items["unplanned_completed"] += 1
         else:
-
             points["committed"] += issue_points_original
             items["committed"] += 1
-            points["planned_completed"] += issue_points_original
+            points["planned_completed"] += issue_points
             items["planned_completed"] += 1
-            if issue_points_original != issue_points:
+            if issue_points_original > issue_points:
                 points["unplanned_completed"] += issue_points-issue_points_original
 
         # Story
