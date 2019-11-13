@@ -147,6 +147,11 @@ def getSprintMetrics(sprint_report):
             continue
 
         try:
+            issue_points_original = int(completed["estimateStatistic"]["statFieldValue"]["value"])
+        except:
+            issue_points_original = 0
+
+        try:
             issue_points = int(completed["currentEstimateStatistic"]["statFieldValue"]["value"])
         except:
             issue_points = 0
@@ -157,13 +162,15 @@ def getSprintMetrics(sprint_report):
         unplanned = False
         if completed["key"] in sprint_report["contents"]["issueKeysAddedDuringSprint"].keys():
             unplanned = True
-            points["unplanned_completed"] += issue_points
+            points["unplanned_completed"] += issue_points_original
             items["unplanned_completed"] += 1
         else:
-            points["committed"] += issue_points
+            points["committed"] += issue_points_original
             items["committed"] += 1
             points["planned_completed"] += issue_points
             items["planned_completed"] += 1
+            if issue_points_original < issue_points:
+                points["unplanned_completed"] += issue_points-issue_points_original
 
         # Story
         if completed["typeName"] == "Story":
@@ -249,10 +256,9 @@ def getAvgVelocity(board_id, sprintID):
         elif str(velocityEntryKey) == str(sprintID):
             threeSprintVelocityTotal = velocityEntries[velocityEntryKey]['completed']['value']
             sprintCounter = sprintCounter + 1
-    if sprintCounter > 0:
-        return threeSprintVelocityTotal/sprintCounter
-    else:
-        return 0
+    if sprintCounter == 0:
+         sprintCounter=1
+    return threeSprintVelocityTotal/sprintCounter
 
 
 def getListOfIssueIdsStr(listOfIssues):
@@ -277,13 +283,13 @@ def getNotionSection(sprint_data, boardID, sprint_report):
             "Points completed "+str(points['completed']),
             "Items committed "+str(items['committed']),
             "Items completed "+str(items['completed']),
-            "Predictability "+str('{:6.2f}'.format(points['completed']/points['committed']*100))+"%",
-            "Predictability of Commitments "+str('{:6.2f}'.format(points['planned_completed']/points['committed']*100))+"%",
+            "Predictability "+str('{:6.2f}'.format(points['completed']/points['committed']*100))+" %",
+            "Predictability of Commitments "+str('{:6.2f}'.format(points['planned_completed']/points['committed']*100))+" %",
             "Average Velocity (Three Sprints) "+str('{:6.2f}'.format(avgVelocity)),
             "Bugs "+str(items['bugs_completed']),
-            "Completed Issues URL: " + jira_query_url +  urllib.parse.quote(jira_query_jql + completedIssuesIds + ")"),
-            "Not Completed Issues URL: " + jira_query_url+ urllib.parse.quote(jira_query_jql + notCompletedIssuesIds + ")"),
-            "Removed Issues URL: " + jira_query_url+ urllib.parse.quote(jira_query_jql + removedIssuesIds + ")")
+            "Completed Issues URL ("+str(len(sprint_report["contents"]["completedIssues"]))+"): " + jira_query_url +  urllib.parse.quote(jira_query_jql + completedIssuesIds + ")"),
+            "Not Completed Issues URL ("+str(len(sprint_report["contents"]["issuesNotCompletedInCurrentSprint"]))+"): " + jira_query_url+ urllib.parse.quote(jira_query_jql + notCompletedIssuesIds + ")"),
+            "Removed Issues URL ("+str(len(sprint_report["contents"]["puntedIssues"]))+"): " + jira_query_url+ urllib.parse.quote(jira_query_jql + removedIssuesIds + ")")
     ]
 
 def collectSprintData(projectKey, sprintID=False):
