@@ -166,7 +166,7 @@ def getSprintMetrics(sprint_report):
             items["committed"] += 1
             points["planned_completed"] += issue_points
             items["planned_completed"] += 1
-            if issue_points_original > issue_points:
+            if issue_points_original < issue_points:
                 points["unplanned_completed"] += issue_points-issue_points_original
 
         # Story
