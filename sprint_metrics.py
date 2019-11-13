@@ -58,6 +58,10 @@ google_entry_translations = {
 "sprint_number": "entry.1975251686"
 }
 
+def getSprintReportURL(project_key, board_id, sprint_id):
+
+    return f"https://{jira_host}/secure/RapidBoard.jspa?rapidView={board_id}&projectKey={project_key}&view=reporting&chart=sprintRetrospective&sprint={sprint_id}"
+
 def generateGoogleFormURL(sprint_data):
     url = f"{google_view_form_url}?"
 
@@ -332,6 +336,7 @@ def collectSprintData(projectKey, sprintID=False):
     sprint_data['sprint_id'] = current_sprint['id']
     sprint_data['sprint_start'] = current_sprint['startDate']
     sprint_data['sprint_end'] = current_sprint['endDate']
+    sprint_data['sprint_report_url'] = getSprintReportURL(projectKey, board_id, sprint_data['sprint_id'])
 
     try:
         sprint_data['sprint_number'] = re.search("(S|Sprint )(?P<number>\d+)", current_sprint["name"]).group('number')
