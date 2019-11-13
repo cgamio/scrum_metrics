@@ -1,22 +1,25 @@
 import requests
 from requests.auth import HTTPBasicAuth
 import json
-import netrc
 import argparse
 import re
 import urllib.parse
+import os
+import traceback
+from flask import abort, Flask, jsonify, request
+from zappa.asynchronous import task
 
 # URL Data
-jira_host = 'thetower.atlassian.net'
+jira_host = os.environ.get('JIRA_HOST')
 jira_url = f"https://{jira_host}/rest/agile/1.0/"
 greenhopper_url = f"https://{jira_host}/rest/greenhopper/1.0/"
 jira_query_url = f"https://{jira_host}/issues/?jql="
 jira_query_jql = "issueKey in ("
 
 # Auth Data
-netrc = netrc.netrc()
-authTokens = netrc.authenticators(jira_host)
-auth = HTTPBasicAuth(authTokens[0], authTokens[2])
+JIRA_USER = os.environ.get('JIRA_USER')
+JIRA_TOKEN = os.environ.get('JIRA_TOKEN')
+auth = HTTPBasicAuth(JIRA_USER, JIRA_TOKEN)
 
 # Header Data
 headers = { 'Accept': 'application/json' }
@@ -348,20 +351,155 @@ def collectSprintData(projectKey, sprintID=False):
     sprint_data['notion'] = getNotionSection(sprint_data, board_id, sprint_report)
     return sprint_data
 
-def main():
-    ap = argparse.ArgumentParser()
+def get_sprint_report_slack_blocks(data):
+    blocks = []
+    divider_block = {
+			"type": "divider"
+		}
 
-    ap.add_argument("project", help="Project Key")
-    ap.add_argument("-s", "--sprint", required=False, help="Sprint ID (default to current sprint)")
+    gif_block = {
+			"type": "image",
+			"title": {
+				"type": "plain_text",
+				"text": "Order Up!"
+			},
+			"image_url": "https://media.giphy.com/media/l1JojmmBMELYFKJc4/giphy.gif",
+			"alt_text": "Order Up!"
+		}
+    blocks.append(gif_block)
+    blocks.append(divider_block)
 
-    args = vars(ap.parse_args())
+    goals_string = '\n'.join(data['sprint_goals'])
+    report_details_block = {
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": f"*Project Name*: {data['project_name']}\n*Sprint {data['sprint_number']}*\n{goals_string}"
+			}
+		}
+    blocks.append(report_details_block)
+    blocks.append(divider_block)
 
-    data = collectSprintData(args['project'], args['sprint'])
+    notion_string = "\n".join(data['notion'])
+    blocks.append({
+		"type": "section",
+		"text": {
+			"type": "mrkdwn",
+			"text": f"{notion_string}"
+		}
+	})
 
-    pprint(data)
 
-    print("URL:")
-    print(generateGoogleFormURL(data))
+    blocks.append(divider_block)
 
-if __name__ == "__main__":
-    main()
+    sprint_metrics = []
+    for type in data['metrics'].keys():
+        type_block = {
+    			"type": "section",
+    			"text": {
+    				"type": "mrkdwn",
+    				"text": f"*{type}*"
+    			}
+    		}
+        blocks.append(type_block)
+
+        for metric in data['metrics'][type].keys():
+            sprint_metrics.append({
+					"type": "plain_text",
+					"text": f"{metric}"
+				})
+            sprint_metrics.append({
+					"type": "plain_text",
+					"text": f"{data['metrics'][type][metric]}"
+				})
+            if len(sprint_metrics) > 8:
+                blocks.append({
+            			"type": "section",
+            			"fields": sprint_metrics
+                })
+                sprint_metrics = []
+
+        if len(sprint_metrics) > 0:
+            sprint_metrics_block = {
+        			"type": "section",
+        			"fields": sprint_metrics
+            }
+            blocks.append(sprint_metrics_block)
+            sprint_metrics = []
+
+    blocks.append(divider_block)
+    blocks.append({
+		"type": "section",
+		"text": {
+			"type": "mrkdwn",
+			"text": f"<{generateGoogleFormURL(data)}|Google Form URL>"
+		}
+	})
+
+    return {
+        "blocks": blocks
+        }
+
+app = Flask(__name__)
+
+def is_request_valid(request):
+    is_token_valid = request.form['token'] == os.environ['SLACK_VERIFICATION_TOKEN']
+    is_team_id_valid = request.form['team_id'] == os.environ['SLACK_TEAM_ID']
+
+    return is_token_valid and is_team_id_valid
+
+@task
+def sprint_report_task(response_url, text):
+    args = text.split()
+    data = {}
+
+    try:
+        sprint_data = collectSprintData(*args)
+        data = get_sprint_report_slack_blocks(sprint_data)
+        data['response_type'] = 'in_channel'
+    except BaseException as e:
+        print(e)
+        traceback.print_exc()
+        data = {
+            'response_type': 'in_channel',
+            'text': str(e),
+        }
+
+    requests.post(response_url, json=data)
+
+@app.route('/sprint-report', methods=['POST'])
+def sprint_report():
+    if not is_request_valid(request):
+        abort(400)
+
+    request_text = request.form['text']
+
+    if 'help' in request_text:
+        response_text = (
+            'Use this generate sprint report information'
+            'Call it with just a team name (i.e., `/sprint-report YOSHI`) to use the currently open sprint for that board. '
+            'Call it with a team name and a sprint ID (e.g., `/sprint-report YOSHI 1234 `) to use a specific sprint.'
+        )
+
+        return jsonify(
+            response_type='in_channel',
+            text=response_text,
+        )
+    else:
+        sprint_report_task(request.form['response_url'], request_text)
+
+        return jsonify(
+            response_type='in_channel',
+            text="Let me think...",
+        )
+
+@app.route('/bot-event', methods=['POST'])
+def bot_handler():
+
+    request.data = request.get_data()
+    pprint(request.form)
+    if request.form['type'] == 'url_verification':
+        return request
+
+    if not is_request_valid(request):
+        abort(400)
