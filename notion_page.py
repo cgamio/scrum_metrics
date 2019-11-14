@@ -36,6 +36,11 @@ class NotionPage:
             print(f"Processing Block: {block}")
 
             try:
+                queue.extend(block.children)
+            except AttributeError:
+                print("Block has no more children, end of the line")
+
+            try:
                 new_title = block.title
                 for search, replace in replacement_dictionary.items():
                     new_title = new_title.replace(search, replace)
@@ -43,8 +48,5 @@ class NotionPage:
                 if block.title != new_title:
                     print(f"{block.title} -> {new_title}")
                     block.title = new_title
-
-                queue.extend(block.children)
-
             except AttributeError:
                 print("Block has no title, moving on")
