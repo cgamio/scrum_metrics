@@ -8,6 +8,7 @@ import os
 import traceback
 from flask import abort, Flask, jsonify, request
 from zappa.asynchronous import task
+from datetime import datetime
 
 # URL Data
 jira_host = os.environ.get('JIRA_HOST')
@@ -295,6 +296,29 @@ def getNotionSection(sprint_data, boardID, sprint_report):
             "Not Completed Issues URL ("+str(len(sprint_report["contents"]["issuesNotCompletedInCurrentSprint"]))+"): " + jira_query_url+ urllib.parse.quote(jira_query_jql + notCompletedIssuesIds + ")"),
             "Removed Issues URL ("+str(len(sprint_report["contents"]["puntedIssues"]))+"): " + jira_query_url+ urllib.parse.quote(jira_query_jql + removedIssuesIds + ")")
     ]
+
+def generateSearchAndReplaceDict(sprint_data):
+    dict = {}
+
+    dict['[team-name]'] = sprint_data['project_name']
+    dict['[sprint-number]'] = sprint_data['sprint_number']
+    start_date = datetime.strptime(sprint_data['sprint_start'].split('T')[0], '%Y-%m-%d')
+    dict['[sprint-start]'] = datetime.strftime(start_date, '%m/%d/%Y')
+    end_date = datetime.strptime(sprint_data['sprint_end'].split('T')[0], '%Y-%m-%d')
+    dict['[sprint-end]'] = datetime.strftime(end_date, '%m/%d/%Y')
+    dict['[sprint-goal]'] = "\n".join(sprint_data['sprint_goals'])
+    dict['[points-committed]'] = str(sprint_data['metrics']['points']['committed'])
+    dict['[points-completed]'] = str(sprint_data['metrics']['points']['completed'])
+
+    # dict['[predictability]'] =
+    # dict['[predictability-commitments]'] =
+    # dict['[average-velocity]'] =
+    # dict['[original-committed-link]'] =
+    # dict['[completed-issues-link]'] =
+    # dict['[items-not-completed-link]'] =
+    # dict['[items-removed-link]'] =
+
+    return dict
 
 def collectSprintData(projectKey, sprintID=False):
     sprint_data = {}
