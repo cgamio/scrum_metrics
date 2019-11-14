@@ -25,3 +25,26 @@ class NotionPage:
         sprint_report.children.add_new(HeaderBlock, title=f"[{sprint_data['project_name']} Sprint {sprint_data['sprint_number']} Report ({date_string})]({sprint_data['sprint_report_url']})")
 
         return sprint_report
+
+    def searchAndReplace(self, replacement_dictionary):
+        queue = []
+
+        queue.extend(self.blocks.children)
+
+        while queue:
+            block = queue.pop()
+            print(f"Processing Block: {block}")
+
+            try:
+                new_title = block.title
+                for search, replace in replacement_dictionary.items():
+                    new_title = new_title.replace(search, replace)
+
+                if block.title != new_title:
+                    print(f"{block.title} -> {new_title}")
+                    block.title = new_title
+
+                queue.extend(block.children)
+
+            except AttributeError:
+                print("Block has no title, moving on")
