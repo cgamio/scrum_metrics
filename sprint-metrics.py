@@ -53,7 +53,7 @@ google_entry_translations = {
         "unplanned_completed": 'entry.1333444050'
     }
 },
-#TODO: We're assuming that the project name IS the team name, which isn't always the case
+#TODO: We're assuming that the project name IS the  team name, which isn't always the case
 "project_name": "entry.1082637073",
 "sprint_number": "entry.1975251686"
 }
