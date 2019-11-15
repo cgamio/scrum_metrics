@@ -277,25 +277,17 @@ def getListOfIssueIdsStr(listOfIssues):
     return listOfIssueIdsStr
 
 def getNotionSection(sprint_data, boardID, sprint_report):
-    points = sprint_data['metrics']['points']
-    items = sprint_data['metrics']['items']
-    avgVelocity = getAvgVelocity(boardID, sprint_data['sprint_id'])
     completedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["completedIssues"])
     notCompletedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["issuesNotCompletedInCurrentSprint"])
     removedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["puntedIssues"])
-    return [
-            "Points committed "+str(points['committed']),
-            "Points completed "+str(points['completed']),
-            "Items committed "+str(items['committed']),
-            "Items completed "+str(items['completed']),
-            "Predictability "+str('{:6.2f}'.format(points['completed']/points['committed']*100))+" %",
-            "Predictability of Commitments "+str('{:6.2f}'.format(points['planned_completed']/points['committed']*100))+" %",
-            "Average Velocity (Three Sprints) "+str('{:6.2f}'.format(avgVelocity)),
-            "Bugs "+str(items['bugs_completed']),
-            "Completed Issues URL ("+str(len(sprint_report["contents"]["completedIssues"]))+"): " + jira_query_url +  urllib.parse.quote(jira_query_jql + completedIssuesIds + ")"),
-            "Not Completed Issues URL ("+str(len(sprint_report["contents"]["issuesNotCompletedInCurrentSprint"]))+"): " + jira_query_url+ urllib.parse.quote(jira_query_jql + notCompletedIssuesIds + ")"),
-            "Removed Issues URL ("+str(len(sprint_report["contents"]["puntedIssues"]))+"): " + jira_query_url+ urllib.parse.quote(jira_query_jql + removedIssuesIds + ")")
-    ]
+
+    urls = {
+        "completed_issues": jira_query_url +  urllib.parse.quote(jira_query_jql + completedIssuesIds + ")"),
+        "incomplete_issues": jira_query_url+ urllib.parse.quote(jira_query_jql + notCompletedIssuesIds + ")"),
+        "removed_issues": jira_query_url+ urllib.parse.quote(jira_query_jql + removedIssuesIds + ")")
+    }
+
+    return urls
 
 def generateSearchAndReplaceDict(sprint_data):
     dict = {}
@@ -310,13 +302,17 @@ def generateSearchAndReplaceDict(sprint_data):
     dict['[points-committed]'] = str(sprint_data['metrics']['points']['committed'])
     dict['[points-completed]'] = str(sprint_data['metrics']['points']['completed'])
 
-    # dict['[predictability]'] =
-    # dict['[predictability-commitments]'] =
-    # dict['[average-velocity]'] =
+    dict['[items-committed]'] = str(sprint_data['metrics']['items']['committed'])
+    dict['[items-completed]'] = str(sprint_data['metrics']['items']['completed'])
+    dict['[bugs-completed]'] = str(sprint_data['metrics']['items']['bugs_completed'])
+
+    dict['[predictability]'] = str(sprint_data['metrics']['meta']['predictability'])
+    dict['[predictability-commitments]'] = str(sprint_data['metrics']['meta']['predictability_of_commitments'])
+    dict['[average-velocity]'] = str(sprint_data['metrics']['meta']['average_velocity'])
     # dict['[original-committed-link]'] =
-    # dict['[completed-issues-link]'] =
-    # dict['[items-not-completed-link]'] =
-    # dict['[items-removed-link]'] =
+    dict['[completed-issues-link]'] = sprint_data['urls']['completed_issues']
+    dict['[items-not-completed-link]'] = sprint_data['urls']['incomplete_issues']
+    dict['[items-removed-link]'] = sprint_data['urls']['removed_issues']
 
     return dict
 
@@ -377,7 +373,14 @@ def collectSprintData(projectKey, sprintID=False):
 
     sprint_data['metrics'] = getSprintMetrics(sprint_report)
 
-    sprint_data['notion'] = getNotionSection(sprint_data, board_id, sprint_report)
+    meta = {}
+    meta['average_velocity'] = getAvgVelocity(board_id, sprint_data['sprint_id'])
+    meta['predictability'] = sprint_data['metrics']['points']['completed']/sprint_data['metrics']['points']['committed']*100
+    meta['predictability_of_commitments'] = sprint_data['metrics']['points']['planned_completed']/sprint_data['metrics']['points']['committed']*100
+
+    sprint_data['metrics']['meta'] = meta
+
+    sprint_data['urls'] = getNotionSection(sprint_data, board_id, sprint_report)
     return sprint_data
 
 def get_sprint_report_slack_blocks(data):
