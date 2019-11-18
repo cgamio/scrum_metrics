@@ -312,7 +312,9 @@ def generateSearchAndReplaceDict(sprint_data):
     dict['[predictability]'] = str(sprint_data['metrics']['meta']['predictability']) + "%"
     dict['[predictability-commitments]'] = str(sprint_data['metrics']['meta']['predictability_of_commitments']) + "%"
     dict['[average-velocity]'] = str(sprint_data['metrics']['meta']['average_velocity'])
-    # dict['[original-committed-link]'] =
+
+    dict['[original-committed-link]'] =f"[{sprint_data['metrics']['items']['committed']} Originally Committed Issues]( {sprint_data['urls']['committed_issues']})"
+
     dict['[completed-issues-link]'] = f"[{sprint_data['metrics']['items']['completed']} Completed Issues]( {sprint_data['urls']['completed_issues']})"
 
     dict['[items-not-completed-link]'] = f"[{sprint_data['metrics']['items']['not_completed']} Incomplete Issues]( {sprint_data['urls']['incomplete_issues']})"
