@@ -7,10 +7,15 @@ verify_ssl = true
 
 [packages]
 jira = "*"
-flask = "*"
 zappa = "*"
 requests = "*"
-notion = "*"
+commonmark = "*"
+bs4 = "*"
+tzlocal = "*"
+python-slugify = "*"
+dictdiffer = "*"
+cached-property = "*"
+Flask = "*"
 
 [requires]
 python_version = "3.7"
