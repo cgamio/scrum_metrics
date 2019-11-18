@@ -1,7 +1,7 @@
 import os
 
 from notion.client import NotionClient
-from notion.block import PageBlock, HeaderBlock, DividerBlock
+from notion.block import PageBlock, HeaderBlock, DividerBlock, TodoBlock
 from sprint_metrics import *
 from datetime import datetime
 
@@ -31,6 +31,10 @@ class NotionPage:
 
         queue.extend(self.blocks.children)
 
+        checkSprintGoals = False
+        if "[sprint-goal]" in replacement_dictionary:
+            checkSprintGoals = True
+
         while queue:
             block = queue.pop()
             print(f"Processing Block: {block}")
@@ -41,7 +45,17 @@ class NotionPage:
                 print("Block has no more children, end of the line")
 
             try:
+                if checkSprintGoals and "[sprint-goal]" in block.title:
+                    parent = block.parent
+                    print(f"Parent: {parent}")
+                    for goal in replacement_dictionary['[sprint-goal]'].split("\n"):
+                        new_block = parent.children.add_new(TodoBlock, title=goal)
+                        new_block.move_to(block, "before")
+                    block.remove()
+                    continue
+
                 new_title = block.title
+
                 for search, replace in replacement_dictionary.items():
                     new_title = new_title.replace(search, replace)
 
