@@ -392,12 +392,14 @@ def collectSprintData(projectKey, sprintID=False, notionPageUrl=False):
 
     sprint_data['urls'] = getURLS(sprint_data['issue_keys'])
 
-    if notionPageUrl:
-        page = NotionPage(notionPageUrl)
-        dict = generateSearchAndReplaceDict(sprint_data)
-        page.searchAndReplace(dict)
-
     return sprint_data
+
+def updateNotionPage(data, url):
+    dict = generateSearchAndReplaceDict(data)
+    pprint(dict)
+    print(f"URL: {url}")
+    page = NotionPage(url)
+    page.searchAndReplace(dict)
 
 def get_sprint_report_slack_blocks(data):
     blocks = []
@@ -494,6 +496,22 @@ def sprint_report_task(response_url, text):
         sprint_data = collectSprintData(*args)
         data = get_sprint_report_slack_blocks(sprint_data)
         data['response_type'] = 'in_channel'
+
+        if len(args) > 2:
+            requests.post(response_url, json=data)
+
+            data = {
+                'response_type': 'in_channel',
+                'text': "Updating that Notion page... please give me up to 5 minutes. I'll let you know when it's done.",
+            }
+            requests.post(response_url, json=data)
+
+            updateNotionPage(sprint_data, args[2])
+
+            data = {
+                'response_type': 'in_channel',
+                'text': "All done!",
+            }
     except BaseException as e:
         print(e)
         traceback.print_exc()
@@ -527,7 +545,7 @@ def sprint_report():
 
         return jsonify(
             response_type='in_channel',
-            text="Let me think... (Keep in mind that Notion Page updates can take up to 5 minutes. Please be patient and DO NOT re-submit requests with the same page)",
+            text="Let me think...",
         )
 
 @app.route('/bot-event', methods=['POST'])
