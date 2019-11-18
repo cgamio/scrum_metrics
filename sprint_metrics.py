@@ -9,6 +9,7 @@ import traceback
 from flask import abort, Flask, jsonify, request
 from zappa.asynchronous import task
 from datetime import datetime
+from notion_page import *
 
 # URL Data
 jira_host = os.environ.get('JIRA_HOST')
@@ -72,6 +73,8 @@ def generateGoogleFormURL(sprint_data):
         url += f"{google_entry_translations[entry]}={sprint_data[entry]}&"
 
     for metric_type in sprint_data['metrics'].keys():
+        if metric_type is "meta":
+            continue
         for item in sprint_data['metrics'][metric_type].keys():
             url += f"{google_entry_translations['metrics'][metric_type][item]}={sprint_data['metrics'][metric_type][item]}&"
 
@@ -323,7 +326,7 @@ def generateSearchAndReplaceDict(sprint_data):
 
     return dict
 
-def collectSprintData(projectKey, sprintID=False):
+def collectSprintData(projectKey, sprintID=False, notionPageUrl=False):
     sprint_data = {}
     board_id = None
     boards = getBoards(projectKey)
@@ -388,6 +391,12 @@ def collectSprintData(projectKey, sprintID=False):
     sprint_data['metrics']['meta'] = meta
 
     sprint_data['urls'] = getURLS(sprint_data['issue_keys'])
+
+    if notionPageUrl:
+        page = NotionPage(notionPageUrl)
+        dict = generateSearchAndReplaceDict(sprint_data)
+        page.searchAndReplace(dict)
+
     return sprint_data
 
 def get_sprint_report_slack_blocks(data):
@@ -417,17 +426,6 @@ def get_sprint_report_slack_blocks(data):
 			}
 		}
     blocks.append(report_details_block)
-    blocks.append(divider_block)
-
-    notion_string = "\n".join(data['notion'])
-    blocks.append({
-		"type": "section",
-		"text": {
-			"type": "mrkdwn",
-			"text": f"{notion_string}"
-		}
-	})
-
 
     blocks.append(divider_block)
 

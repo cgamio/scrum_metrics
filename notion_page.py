@@ -2,7 +2,6 @@ import os
 
 from notion.client import NotionClient
 from notion.block import PageBlock, HeaderBlock, DividerBlock, TodoBlock
-from sprint_metrics import *
 from datetime import datetime
 
 class NotionPage:
