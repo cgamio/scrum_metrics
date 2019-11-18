@@ -531,9 +531,10 @@ def sprint_report():
 
     if 'help' in request_text:
         response_text = (
-            'Use this generate sprint report information'
-            'Call it with just a team name (i.e., `/sprint-report YOSHI`) to use the currently open sprint for that board. '
-            'Call it with a team name and a sprint ID (e.g., `/sprint-report YOSHI 1234 `) to use a specific sprint.'
+            'Use this generate sprint report information\n' +
+            'Call it with just a team name (i.e., `/sprint-report YOSHI`) to use the currently open sprint for that board.\n' +
+            'Call it with a team name and a sprint ID (e.g., `/sprint-report YOSHI 1234 `) to use a specific sprint.\n' +
+            'Call it with a team name, a sprint ID and a Notion URL to update that page with sprint data `/sprint-report YOSHI 1234 https://www.notion.so/mediaos/Sprint-22-Review-3edba77b45d2492592286df310b0c819#5217e0db2a914026a5e433ed0901`.\n' 
         )
 
         return jsonify(
