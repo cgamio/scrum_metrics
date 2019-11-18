@@ -527,7 +527,7 @@ def sprint_report():
 
         return jsonify(
             response_type='in_channel',
-            text="Let me think...",
+            text="Let me think... (Keep in mind that Notion Page updates can take up to 5 minutes. Please be patient and DO NOT re-submit requests with the same page)",
         )
 
 @app.route('/bot-event', methods=['POST'])
