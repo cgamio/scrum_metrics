@@ -306,13 +306,15 @@ def generateSearchAndReplaceDict(sprint_data):
     dict['[items-completed]'] = str(sprint_data['metrics']['items']['completed'])
     dict['[bugs-completed]'] = str(sprint_data['metrics']['items']['bugs_completed'])
 
-    dict['[predictability]'] = str(sprint_data['metrics']['meta']['predictability'])
-    dict['[predictability-commitments]'] = str(sprint_data['metrics']['meta']['predictability_of_commitments'])
+    dict['[predictability]'] = str(sprint_data['metrics']['meta']['predictability']) + "%"
+    dict['[predictability-commitments]'] = str(sprint_data['metrics']['meta']['predictability_of_commitments']) + "%"
     dict['[average-velocity]'] = str(sprint_data['metrics']['meta']['average_velocity'])
     # dict['[original-committed-link]'] =
-    dict['[completed-issues-link]'] = sprint_data['urls']['completed_issues']
-    dict['[items-not-completed-link]'] = sprint_data['urls']['incomplete_issues']
-    dict['[items-removed-link]'] = sprint_data['urls']['removed_issues']
+    dict['[completed-issues-link]'] = f"[{sprint_data['metrics']['items']['completed']} Completed Issues]( {sprint_data['urls']['completed_issues']})"
+
+    dict['[items-not-completed-link]'] = f"[{sprint_data['metrics']['items']['not_completed']} Incomplete Issues]( {sprint_data['urls']['incomplete_issues']})"
+
+    dict['[items-removed-link]'] = f"[{sprint_data['metrics']['items']['removed']} Removed Issues]( {sprint_data['urls']['removed_issues']})"
 
     return dict
 
@@ -374,9 +376,9 @@ def collectSprintData(projectKey, sprintID=False):
     sprint_data['metrics'] = getSprintMetrics(sprint_report)
 
     meta = {}
-    meta['average_velocity'] = getAvgVelocity(board_id, sprint_data['sprint_id'])
-    meta['predictability'] = sprint_data['metrics']['points']['completed']/sprint_data['metrics']['points']['committed']*100
-    meta['predictability_of_commitments'] = sprint_data['metrics']['points']['planned_completed']/sprint_data['metrics']['points']['committed']*100
+    meta['average_velocity'] = int(getAvgVelocity(board_id, sprint_data['sprint_id']))
+    meta['predictability'] = int(sprint_data['metrics']['points']['completed']/sprint_data['metrics']['points']['committed']*100)
+    meta['predictability_of_commitments'] = int(sprint_data['metrics']['points']['planned_completed']/sprint_data['metrics']['points']['committed']*100)
 
     sprint_data['metrics']['meta'] = meta
 
