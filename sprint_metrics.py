@@ -139,6 +139,13 @@ def getSprintMetrics(sprint_report):
         "removed": 0
     }
 
+    issue_keys = {
+        "committed": [],
+        "completed": [],
+        "incomplete": [],
+        "removed": []
+    }
+
     feature_work = ["Story", "Design", "Spike"]
     optimization = ["Optimization"]
     bug = ["Bug"]
@@ -146,6 +153,8 @@ def getSprintMetrics(sprint_report):
 
     # Completed Work
     for completed in sprint_report["contents"]["completedIssues"]:
+
+        issue_keys["completed"].append(completed["key"])
 
         # Short-circuit for things we don't track
         if completed["typeName"] in ignore:
@@ -170,6 +179,7 @@ def getSprintMetrics(sprint_report):
             points["unplanned_completed"] += issue_points_original
             items["unplanned_completed"] += 1
         else:
+            issue_keys["committed"].append(completed["key"])
             points["committed"] += issue_points_original
             items["committed"] += 1
             points["planned_completed"] += issue_points
@@ -201,6 +211,8 @@ def getSprintMetrics(sprint_report):
     # Incomplete Work
     for incomplete in sprint_report["contents"]["issuesNotCompletedInCurrentSprint"]:
 
+        issue_keys["incomplete"].append(incomplete["key"])
+
         # Short-circuit for things we don't track
         if incomplete["typeName"] in ignore:
             continue
@@ -214,11 +226,14 @@ def getSprintMetrics(sprint_report):
         items["not_completed"] += 1
 
         if incomplete["key"] not in sprint_report["contents"]["issueKeysAddedDuringSprint"].keys():
+            issue_keys["committed"].append(incomplete["key"])
             points["committed"] += issue_points
             items["committed"] += 1
 
     # Removed Work
     for removed in sprint_report["contents"]["puntedIssues"]:
+
+        issue_keys["removed"].append(removed["key"])
 
         # Short-circuit for things we don't track
         if removed["typeName"] in ignore:
@@ -232,14 +247,15 @@ def getSprintMetrics(sprint_report):
         if removed["key"] not in sprint_report["contents"]["issueKeysAddedDuringSprint"].keys():
             points["committed"] += issue_points
             items["committed"] += 1
+            issue_keys["committed"].append(removed["key"])
 
         points["removed"] += issue_points
         items["removed"] += 1
 
     return {
         "points" : points,
-        "items" : items
-    }
+        "items" : items,
+    }, issue_keys
 def getVelocityReport(board_id):
     url = f"{greenhopper_url}rapid/charts/velocity?rapidViewId={board_id}"
 
@@ -265,26 +281,13 @@ def getAvgVelocity(board_id, sprintID):
          sprintCounter=1
     return threeSprintVelocityTotal/sprintCounter
 
-
-def getListOfIssueIdsStr(listOfIssues):
-    listOfIssueIdsStr = ""
-    for issue in listOfIssues:
-        if (listOfIssueIdsStr == ""):
-            listOfIssueIdsStr = str(issue["key"])
-        else:
-            listOfIssueIdsStr = listOfIssueIdsStr + "," + str(issue["key"])
-
-    return listOfIssueIdsStr
-
-def getNotionSection(sprint_data, boardID, sprint_report):
-    completedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["completedIssues"])
-    notCompletedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["issuesNotCompletedInCurrentSprint"])
-    removedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["puntedIssues"])
+def getURLS(issue_keys):
 
     urls = {
-        "completed_issues": jira_query_url +  urllib.parse.quote(jira_query_jql + completedIssuesIds + ")"),
-        "incomplete_issues": jira_query_url+ urllib.parse.quote(jira_query_jql + notCompletedIssuesIds + ")"),
-        "removed_issues": jira_query_url+ urllib.parse.quote(jira_query_jql + removedIssuesIds + ")")
+        "completed_issues": jira_query_url +  urllib.parse.quote(jira_query_jql + ",".join(issue_keys["completed"]) + ")"),
+        "incomplete_issues": jira_query_url+ urllib.parse.quote(jira_query_jql + ",".join(issue_keys["incomplete"]) + ")"),
+        "removed_issues": jira_query_url+ urllib.parse.quote(jira_query_jql + ",".join(issue_keys["removed"]) + ")"),
+        "committed_issues": jira_query_url+ urllib.parse.quote(jira_query_jql + ",".join(issue_keys["committed"]) + ")")
     }
 
     return urls
@@ -373,7 +376,7 @@ def collectSprintData(projectKey, sprintID=False):
         raise Exception("I couldn't find that sprint")
         exit()
 
-    sprint_data['metrics'] = getSprintMetrics(sprint_report)
+    sprint_data['metrics'], sprint_data['issue_keys'] = getSprintMetrics(sprint_report)
 
     meta = {}
     meta['average_velocity'] = int(getAvgVelocity(board_id, sprint_data['sprint_id']))
@@ -382,7 +385,7 @@ def collectSprintData(projectKey, sprintID=False):
 
     sprint_data['metrics']['meta'] = meta
 
-    sprint_data['urls'] = getNotionSection(sprint_data, board_id, sprint_report)
+    sprint_data['urls'] = getURLS(sprint_data['issue_keys'])
     return sprint_data
 
 def get_sprint_report_slack_blocks(data):
