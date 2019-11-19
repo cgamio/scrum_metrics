@@ -8,6 +8,8 @@ import os
 import traceback
 from flask import abort, Flask, jsonify, request
 from zappa.asynchronous import task
+from datetime import datetime
+from notion_page import *
 
 # URL Data
 jira_host = os.environ.get('JIRA_HOST')
@@ -58,6 +60,10 @@ google_entry_translations = {
 "sprint_number": "entry.1975251686"
 }
 
+def getSprintReportURL(project_key, board_id, sprint_id):
+
+    return f"https://{jira_host}/secure/RapidBoard.jspa?rapidView={board_id}&projectKey={project_key}&view=reporting&chart=sprintRetrospective&sprint={sprint_id}"
+
 def generateGoogleFormURL(sprint_data):
     url = f"{google_view_form_url}?"
 
@@ -67,6 +73,8 @@ def generateGoogleFormURL(sprint_data):
         url += f"{google_entry_translations[entry]}={sprint_data[entry]}&"
 
     for metric_type in sprint_data['metrics'].keys():
+        if metric_type is "meta":
+            continue
         for item in sprint_data['metrics'][metric_type].keys():
             url += f"{google_entry_translations['metrics'][metric_type][item]}={sprint_data['metrics'][metric_type][item]}&"
 
@@ -95,7 +103,12 @@ def getBoards(name=None):
     return makeRequest('GET', url)
 
 def getCurrentSprintFromBoard(boardID):
-    url = f"{jira_url}board/{boardID}/sprint?state=active"
+    url = f"{jira_url}board/{boardID}/sprint?state=active&maxResults=1"
+
+    return makeRequest('GET', url)
+
+def getNextSprintFromBoard(boardID):
+    url = f"{jira_url}board/{boardID}/sprint?state=future&maxResults=1"
 
     return makeRequest('GET', url)
 
@@ -134,6 +147,13 @@ def getSprintMetrics(sprint_report):
         "removed": 0
     }
 
+    issue_keys = {
+        "committed": [],
+        "completed": [],
+        "incomplete": [],
+        "removed": []
+    }
+
     feature_work = ["Story", "Design", "Spike"]
     optimization = ["Optimization"]
     bug = ["Bug"]
@@ -141,6 +161,8 @@ def getSprintMetrics(sprint_report):
 
     # Completed Work
     for completed in sprint_report["contents"]["completedIssues"]:
+
+        issue_keys["completed"].append(completed["key"])
 
         # Short-circuit for things we don't track
         if completed["typeName"] in ignore:
@@ -165,6 +187,7 @@ def getSprintMetrics(sprint_report):
             points["unplanned_completed"] += issue_points_original
             items["unplanned_completed"] += 1
         else:
+            issue_keys["committed"].append(completed["key"])
             points["committed"] += issue_points_original
             items["committed"] += 1
             points["planned_completed"] += issue_points
@@ -196,6 +219,8 @@ def getSprintMetrics(sprint_report):
     # Incomplete Work
     for incomplete in sprint_report["contents"]["issuesNotCompletedInCurrentSprint"]:
 
+        issue_keys["incomplete"].append(incomplete["key"])
+
         # Short-circuit for things we don't track
         if incomplete["typeName"] in ignore:
             continue
@@ -209,11 +234,14 @@ def getSprintMetrics(sprint_report):
         items["not_completed"] += 1
 
         if incomplete["key"] not in sprint_report["contents"]["issueKeysAddedDuringSprint"].keys():
+            issue_keys["committed"].append(incomplete["key"])
             points["committed"] += issue_points
             items["committed"] += 1
 
     # Removed Work
     for removed in sprint_report["contents"]["puntedIssues"]:
+
+        issue_keys["removed"].append(removed["key"])
 
         # Short-circuit for things we don't track
         if removed["typeName"] in ignore:
@@ -227,14 +255,15 @@ def getSprintMetrics(sprint_report):
         if removed["key"] not in sprint_report["contents"]["issueKeysAddedDuringSprint"].keys():
             points["committed"] += issue_points
             items["committed"] += 1
+            issue_keys["committed"].append(removed["key"])
 
         points["removed"] += issue_points
         items["removed"] += 1
 
     return {
         "points" : points,
-        "items" : items
-    }
+        "items" : items,
+    }, issue_keys
 def getVelocityReport(board_id):
     url = f"{greenhopper_url}rapid/charts/velocity?rapidViewId={board_id}"
 
@@ -260,96 +289,128 @@ def getAvgVelocity(board_id, sprintID):
          sprintCounter=1
     return threeSprintVelocityTotal/sprintCounter
 
+def getURLS(issue_keys):
 
-def getListOfIssueIdsStr(listOfIssues):
-    listOfIssueIdsStr = ""
-    for issue in listOfIssues:
-        if (listOfIssueIdsStr == ""):
-            listOfIssueIdsStr = str(issue["key"])
-        else:
-            listOfIssueIdsStr = listOfIssueIdsStr + "," + str(issue["key"])
+    urls = {
+        "completed_issues": jira_query_url +  urllib.parse.quote(jira_query_jql + ",".join(issue_keys["completed"]) + ")"),
+        "incomplete_issues": jira_query_url+ urllib.parse.quote(jira_query_jql + ",".join(issue_keys["incomplete"]) + ")"),
+        "removed_issues": jira_query_url+ urllib.parse.quote(jira_query_jql + ",".join(issue_keys["removed"]) + ")"),
+        "committed_issues": jira_query_url+ urllib.parse.quote(jira_query_jql + ",".join(issue_keys["committed"]) + ")")
+    }
 
-    return listOfIssueIdsStr
+    return urls
 
-def getNotionSection(sprint_data, boardID, sprint_report):
-    points = sprint_data['metrics']['points']
-    items = sprint_data['metrics']['items']
-    avgVelocity = getAvgVelocity(boardID, sprint_data['sprint_id'])
-    completedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["completedIssues"])
-    notCompletedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["issuesNotCompletedInCurrentSprint"])
-    removedIssuesIds = getListOfIssueIdsStr(sprint_report["contents"]["puntedIssues"])
-    return [
-            "Points committed "+str(points['committed']),
-            "Points completed "+str(points['completed']),
-            "Items committed "+str(items['committed']),
-            "Items completed "+str(items['completed']),
-            "Predictability "+str('{:6.2f}'.format(points['completed']/points['committed']*100))+" %",
-            "Predictability of Commitments "+str('{:6.2f}'.format(points['planned_completed']/points['committed']*100))+" %",
-            "Average Velocity (Three Sprints) "+str('{:6.2f}'.format(avgVelocity)),
-            "Bugs "+str(items['bugs_completed']),
-            "Completed Issues URL ("+str(len(sprint_report["contents"]["completedIssues"]))+"): " + jira_query_url +  urllib.parse.quote(jira_query_jql + completedIssuesIds + ")"),
-            "Not Completed Issues URL ("+str(len(sprint_report["contents"]["issuesNotCompletedInCurrentSprint"]))+"): " + jira_query_url+ urllib.parse.quote(jira_query_jql + notCompletedIssuesIds + ")"),
-            "Removed Issues URL ("+str(len(sprint_report["contents"]["puntedIssues"]))+"): " + jira_query_url+ urllib.parse.quote(jira_query_jql + removedIssuesIds + ")")
-    ]
+def generateNextSearchAndReplaceDict(sprint_data):
+    dict = {}
 
-def collectSprintData(projectKey, sprintID=False):
+    dict['[next-sprint-number]'] = sprint_data['sprint_number']
+
+    start_date = datetime.strptime(sprint_data['sprint_start'].split('T')[0], '%Y-%m-%d')
+    dict['[next-sprint-start]'] = datetime.strftime(start_date, '%m/%d/%Y')
+    end_date = datetime.strptime(sprint_data['sprint_end'].split('T')[0], '%Y-%m-%d')
+    dict['[next-sprint-end]'] = datetime.strftime(end_date, '%m/%d/%Y')
+    dict['[next-sprint-goal]'] = "\n".join(sprint_data['sprint_goals'])
+
+    dict['[next-points-committed]'] = str(sprint_data['metrics']['points']['committed'])
+    dict['[next-items-committed]'] = str(sprint_data['metrics']['items']['committed'])
+
+    dict['[next-original-committed-link]'] =f"[{sprint_data['metrics']['items']['committed']} Committed Issues]( {sprint_data['urls']['committed_issues']})"
+
+    return dict
+
+def generateSearchAndReplaceDict(sprint_data):
+    dict = {}
+
+    dict['[team-name]'] = sprint_data['project_name']
+    dict['[sprint-number]'] = sprint_data['sprint_number']
+    start_date = datetime.strptime(sprint_data['sprint_start'].split('T')[0], '%Y-%m-%d')
+    dict['[sprint-start]'] = datetime.strftime(start_date, '%m/%d/%Y')
+    end_date = datetime.strptime(sprint_data['sprint_end'].split('T')[0], '%Y-%m-%d')
+    dict['[sprint-end]'] = datetime.strftime(end_date, '%m/%d/%Y')
+    dict['[sprint-goal]'] = "\n".join(sprint_data['sprint_goals'])
+    dict['[points-committed]'] = str(sprint_data['metrics']['points']['committed'])
+    dict['[points-completed]'] = str(sprint_data['metrics']['points']['completed'])
+
+    dict['[items-committed]'] = str(sprint_data['metrics']['items']['committed'])
+    dict['[items-completed]'] = str(sprint_data['metrics']['items']['completed'])
+    dict['[bugs-completed]'] = str(sprint_data['metrics']['items']['bugs_completed'])
+
+    dict['[predictability]'] = str(sprint_data['metrics']['meta']['predictability']) + "%"
+    dict['[predictability-commitments]'] = str(sprint_data['metrics']['meta']['predictability_of_commitments']) + "%"
+    dict['[average-velocity]'] = str(sprint_data['metrics']['meta']['average_velocity'])
+
+    dict['[original-committed-link]'] =f"[{sprint_data['metrics']['items']['committed']} Committed Issues]( {sprint_data['urls']['committed_issues']})"
+
+    dict['[completed-issues-link]'] = f"[{sprint_data['metrics']['items']['completed']} Completed Issues]( {sprint_data['urls']['completed_issues']})"
+
+    dict['[items-not-completed-link]'] = f"[{sprint_data['metrics']['items']['not_completed']} Incomplete Issues]( {sprint_data['urls']['incomplete_issues']})"
+
+    dict['[items-removed-link]'] = f"[{sprint_data['metrics']['items']['removed']} Removed Issues]( {sprint_data['urls']['removed_issues']})"
+
+    return dict
+
+def collectSprintData(sprintID):
     sprint_data = {}
-    board_id = None
-    boards = getBoards(projectKey)
-    if boards == False or boards["total"] == 0:
-        raise Exception ("I couldn't find that project's board")
+
+    sprint_data['sprint_id'] = sprintID
+    current_sprint = getSprintFromID(sprint_data['sprint_id'])
+
+    if not current_sprint:
+        raise Exception("I couldn't find that sprint id")
         exit()
 
-    if sprintID:
-        sprint_data['sprint_id'] = sprintID
-        current_sprint = getSprintFromID(sprint_data['sprint_id'])
-
-        if not current_sprint:
-            raise Exception("I couldn't find that sprint id")
-            exit()
-
-        board_id = current_sprint['originBoardId']
-        board = getBoardById(board_id)
-        sprint_data['board_name'] = board['name']
-        sprint_data['project_name'] = board["location"]["projectName"]
-
-    else:
-        # This is a pretty awful way to handle the fact that projects can have multiple boards, with no specific 'default'
-        #TODO: If using a Slack Bot, we should have a store for projects and their preferred boards. If one isn't registered, we should prompt for a board id and save that.
-        for board in boards['values']:
-            try:
-                current_sprint = getCurrentSprintFromBoard(board['id'])["values"][0]
-                board_id = board['id']
-                sprint_data['board_name'] = board['name']
-                sprint_data['project_name'] = board["location"]["projectName"]
-            except:
-                continue
-
-        if not board_id:
-            raise Exception("I couldn't a board with an active sprint for that project")
-            exit()
+    sprint_data['board_id'] = current_sprint['originBoardId']
+    board = getBoardById(sprint_data['board_id'])
+    sprint_data['board_name'] = board['name']
+    sprint_data['project_name'] = board["location"]["projectName"]
 
     sprint_data['sprint_id'] = current_sprint['id']
-    sprint_data['sprint_start'] = current_sprint['startDate']
-    sprint_data['sprint_end'] = current_sprint['endDate']
+    sprint_data['sprint_report_url'] = getSprintReportURL(sprint_data['project_name'], sprint_data['board_id'], sprint_data['sprint_id'])
+
+    # Future sprints don't have start / end dates and that's ok!
+    try:
+        sprint_data['sprint_start'] = current_sprint['startDate']
+        sprint_data['sprint_end'] = current_sprint['endDate']
+    except:
+        print("Assuming this is a future sprint since the start / end dates aren't set")
 
     try:
         sprint_data['sprint_number'] = re.search("(S|Sprint )(?P<number>\d+)", current_sprint["name"]).group('number')
     except:
         raise Exception("I couldn't determine the sprint number from that sprint's name")
 
-    sprint_data['sprint_goals'] = current_sprint['goal'].split("\n")
+    try:
+        sprint_data['sprint_goals'] = current_sprint['goal'].split("\n")
+    except:
+        print("This sprint doesn't have a goal!")
 
-    sprint_report = getSprintReport(board_id, sprint_data['sprint_id'])
+    sprint_report = getSprintReport(sprint_data['board_id'], sprint_data['sprint_id'])
 
     if not sprint_report:
         raise Exception("I couldn't find that sprint")
         exit()
 
-    sprint_data['metrics'] = getSprintMetrics(sprint_report)
+    sprint_data['metrics'], sprint_data['issue_keys'] = getSprintMetrics(sprint_report)
 
-    sprint_data['notion'] = getNotionSection(sprint_data, board_id, sprint_report)
+    meta = {}
+    meta['average_velocity'] = int(getAvgVelocity(sprint_data['board_id'], sprint_data['sprint_id']))
+    meta['predictability'] = int(sprint_data['metrics']['points']['completed']/sprint_data['metrics']['points']['committed']*100)
+    meta['predictability_of_commitments'] = int(sprint_data['metrics']['points']['planned_completed']/sprint_data['metrics']['points']['committed']*100)
+
+    sprint_data['metrics']['meta'] = meta
+
+    sprint_data['urls'] = getURLS(sprint_data['issue_keys'])
+
     return sprint_data
+
+def updateNotionPage(url, sprintdata, next_sprint_data=False):
+    dict = generateSearchAndReplaceDict(sprintdata)
+    if next_sprint_data:
+        dict.update(generateNextSearchAndReplaceDict(next_sprint_data))
+    pprint(dict)
+    print(f"URL: {url}")
+    page = NotionPage(url)
+    page.searchAndReplace(dict)
 
 def get_sprint_report_slack_blocks(data):
     blocks = []
@@ -378,17 +439,6 @@ def get_sprint_report_slack_blocks(data):
 			}
 		}
     blocks.append(report_details_block)
-    blocks.append(divider_block)
-
-    notion_string = "\n".join(data['notion'])
-    blocks.append({
-		"type": "section",
-		"text": {
-			"type": "mrkdwn",
-			"text": f"{notion_string}"
-		}
-	})
-
 
     blocks.append(divider_block)
 
@@ -454,9 +504,27 @@ def sprint_report_task(response_url, text):
     data = {}
 
     try:
-        sprint_data = collectSprintData(*args)
+        sprint_data = collectSprintData(args[0])
         data = get_sprint_report_slack_blocks(sprint_data)
         data['response_type'] = 'in_channel'
+
+        if len(args) > 2:
+            requests.post(response_url, json=data)
+
+            data = {
+                'response_type': 'in_channel',
+                'text': "Updating that Notion page... please give me up to 5 minutes. I'll let you know when it's done.",
+            }
+            requests.post(response_url, json=data)
+
+            next_sprint_data = collectSprintData(args[1])
+
+            updateNotionPage(args[2], sprint_data, next_sprint_data)
+
+            data = {
+                'response_type': 'in_channel',
+                'text': "All done!",
+            }
     except BaseException as e:
         print(e)
         traceback.print_exc()
@@ -476,9 +544,9 @@ def sprint_report():
 
     if 'help' in request_text:
         response_text = (
-            'Use this generate sprint report information'
-            'Call it with just a team name (i.e., `/sprint-report YOSHI`) to use the currently open sprint for that board. '
-            'Call it with a team name and a sprint ID (e.g., `/sprint-report YOSHI 1234 `) to use a specific sprint.'
+            'Use this generate sprint report information\n' +
+            'Call it with a sprint ID (e.g., `/sprint-report 1234 `) to get data for that sprint.\n' +
+            'Call it with the current sprint ID, the next sprint ID, and a Notion URL to update that page with sprint report data `/sprint-report 1234 1235 https://www.notion.so/mediaos/Sprint-22-Review-3edba77b45d2492592286df310b0c819#5217e0db2a914026a5e433ed0901`.\n'
         )
 
         return jsonify(

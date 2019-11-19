@@ -84,3 +84,26 @@ $ pipenv shell
     "sprint_start": "2019-10-23T20:01:17.081Z"
 }
 ```
+
+# Notion Integration
+
+The slash command now has the ability to accept a Notion URL, and update that page with relevant Sprint Data. This is useful to generate Sprint Reports using a template [like this](https://www.notion.so/mediaos/Sprint-Review-Template-3edba77b45d2492592286df310b0c819#5217e0db2a914026a5e433ed0901bdce)
+
+So far the available "short codes" are:
+- [average-velocity]
+- [bugs-completed]
+- [completed-issues-link]
+- [items-committed]
+- [items-completed]
+- [items-not-completed-link]
+- [items-removed-link]
+- [original-committed-link]
+- [points-committed]
+- [points-completed]
+- [predictability-commitments]
+- [predictability]
+- [sprint-end]
+- [sprint-goal]
+- [sprint-number]
+- [sprint-start]
+- [team-name]
