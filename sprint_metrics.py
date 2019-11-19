@@ -103,7 +103,12 @@ def getBoards(name=None):
     return makeRequest('GET', url)
 
 def getCurrentSprintFromBoard(boardID):
-    url = f"{jira_url}board/{boardID}/sprint?state=active"
+    url = f"{jira_url}board/{boardID}/sprint?state=active&maxResults=1"
+
+    return makeRequest('GET', url)
+
+def getNextSprintFromBoard(boardID):
+    url = f"{jira_url}board/{boardID}/sprint?state=future&maxResults=1"
 
     return makeRequest('GET', url)
 
@@ -295,6 +300,24 @@ def getURLS(issue_keys):
 
     return urls
 
+def generateNextSearchAndReplaceDict(sprint_data):
+    dict = {}
+
+    dict['[next-sprint-number]'] = sprint_data['sprint_number']
+
+    start_date = datetime.strptime(sprint_data['sprint_start'].split('T')[0], '%Y-%m-%d')
+    dict['[next-sprint-start]'] = datetime.strftime(start_date, '%m/%d/%Y')
+    end_date = datetime.strptime(sprint_data['sprint_end'].split('T')[0], '%Y-%m-%d')
+    dict['[next-sprint-end]'] = datetime.strftime(end_date, '%m/%d/%Y')
+    dict['[next-sprint-goal]'] = "\n".join(sprint_data['sprint_goals'])
+
+    dict['[next-points-committed]'] = str(sprint_data['metrics']['points']['committed'])
+    dict['[next-items-committed]'] = str(sprint_data['metrics']['items']['committed'])
+
+    dict['[next-original-committed-link]'] =f"[{sprint_data['metrics']['items']['committed']} Committed Issues]( {sprint_data['urls']['committed_issues']})"
+
+    return dict
+
 def generateSearchAndReplaceDict(sprint_data):
     dict = {}
 
@@ -316,7 +339,7 @@ def generateSearchAndReplaceDict(sprint_data):
     dict['[predictability-commitments]'] = str(sprint_data['metrics']['meta']['predictability_of_commitments']) + "%"
     dict['[average-velocity]'] = str(sprint_data['metrics']['meta']['average_velocity'])
 
-    dict['[original-committed-link]'] =f"[{sprint_data['metrics']['items']['committed']} Originally Committed Issues]( {sprint_data['urls']['committed_issues']})"
+    dict['[original-committed-link]'] =f"[{sprint_data['metrics']['items']['committed']} Committed Issues]( {sprint_data['urls']['committed_issues']})"
 
     dict['[completed-issues-link]'] = f"[{sprint_data['metrics']['items']['completed']} Completed Issues]( {sprint_data['urls']['completed_issues']})"
 
@@ -326,56 +349,42 @@ def generateSearchAndReplaceDict(sprint_data):
 
     return dict
 
-def collectSprintData(projectKey, sprintID=False, notionPageUrl=False):
+def collectSprintData(sprintID):
     sprint_data = {}
-    board_id = None
-    boards = getBoards(projectKey)
-    if boards == False or boards["total"] == 0:
-        raise Exception ("I couldn't find that project's board")
+
+    sprint_data['sprint_id'] = sprintID
+    current_sprint = getSprintFromID(sprint_data['sprint_id'])
+
+    if not current_sprint:
+        raise Exception("I couldn't find that sprint id")
         exit()
 
-    if sprintID:
-        sprint_data['sprint_id'] = sprintID
-        current_sprint = getSprintFromID(sprint_data['sprint_id'])
-
-        if not current_sprint:
-            raise Exception("I couldn't find that sprint id")
-            exit()
-
-        board_id = current_sprint['originBoardId']
-        board = getBoardById(board_id)
-        sprint_data['board_name'] = board['name']
-        sprint_data['project_name'] = board["location"]["projectName"]
-
-    else:
-        # This is a pretty awful way to handle the fact that projects can have multiple boards, with no specific 'default'
-        #TODO: If using a Slack Bot, we should have a store for projects and their preferred boards. If one isn't registered, we should prompt for a board id and save that.
-        for board in boards['values']:
-            try:
-                current_sprint = getCurrentSprintFromBoard(board['id'])["values"][0]
-                board_id = board['id']
-                sprint_data['board_name'] = board['name']
-                sprint_data['project_name'] = board["location"]["projectName"]
-            except:
-                continue
-
-        if not board_id:
-            raise Exception("I couldn't a board with an active sprint for that project")
-            exit()
+    sprint_data['board_id'] = current_sprint['originBoardId']
+    board = getBoardById(sprint_data['board_id'])
+    sprint_data['board_name'] = board['name']
+    sprint_data['project_name'] = board["location"]["projectName"]
 
     sprint_data['sprint_id'] = current_sprint['id']
-    sprint_data['sprint_start'] = current_sprint['startDate']
-    sprint_data['sprint_end'] = current_sprint['endDate']
-    sprint_data['sprint_report_url'] = getSprintReportURL(projectKey, board_id, sprint_data['sprint_id'])
+    sprint_data['sprint_report_url'] = getSprintReportURL(sprint_data['project_name'], sprint_data['board_id'], sprint_data['sprint_id'])
+
+    # Future sprints don't have start / end dates and that's ok!
+    try:
+        sprint_data['sprint_start'] = current_sprint['startDate']
+        sprint_data['sprint_end'] = current_sprint['endDate']
+    except:
+        print("Assuming this is a future sprint since the start / end dates aren't set")
 
     try:
         sprint_data['sprint_number'] = re.search("(S|Sprint )(?P<number>\d+)", current_sprint["name"]).group('number')
     except:
         raise Exception("I couldn't determine the sprint number from that sprint's name")
 
-    sprint_data['sprint_goals'] = current_sprint['goal'].split("\n")
+    try:
+        sprint_data['sprint_goals'] = current_sprint['goal'].split("\n")
+    except:
+        print("This sprint doesn't have a goal!")
 
-    sprint_report = getSprintReport(board_id, sprint_data['sprint_id'])
+    sprint_report = getSprintReport(sprint_data['board_id'], sprint_data['sprint_id'])
 
     if not sprint_report:
         raise Exception("I couldn't find that sprint")
@@ -384,7 +393,7 @@ def collectSprintData(projectKey, sprintID=False, notionPageUrl=False):
     sprint_data['metrics'], sprint_data['issue_keys'] = getSprintMetrics(sprint_report)
 
     meta = {}
-    meta['average_velocity'] = int(getAvgVelocity(board_id, sprint_data['sprint_id']))
+    meta['average_velocity'] = int(getAvgVelocity(sprint_data['board_id'], sprint_data['sprint_id']))
     meta['predictability'] = int(sprint_data['metrics']['points']['completed']/sprint_data['metrics']['points']['committed']*100)
     meta['predictability_of_commitments'] = int(sprint_data['metrics']['points']['planned_completed']/sprint_data['metrics']['points']['committed']*100)
 
@@ -394,8 +403,10 @@ def collectSprintData(projectKey, sprintID=False, notionPageUrl=False):
 
     return sprint_data
 
-def updateNotionPage(data, url):
-    dict = generateSearchAndReplaceDict(data)
+def updateNotionPage(url, sprintdata, next_sprint_data=False):
+    dict = generateSearchAndReplaceDict(sprintdata)
+    if next_sprint_data:
+        dict.update(generateNextSearchAndReplaceDict(next_sprint_data))
     pprint(dict)
     print(f"URL: {url}")
     page = NotionPage(url)
@@ -493,7 +504,7 @@ def sprint_report_task(response_url, text):
     data = {}
 
     try:
-        sprint_data = collectSprintData(*args)
+        sprint_data = collectSprintData(args[0])
         data = get_sprint_report_slack_blocks(sprint_data)
         data['response_type'] = 'in_channel'
 
@@ -506,7 +517,9 @@ def sprint_report_task(response_url, text):
             }
             requests.post(response_url, json=data)
 
-            updateNotionPage(sprint_data, args[2])
+            next_sprint_data = collectSprintData(args[1])
+
+            updateNotionPage(args[2], sprint_data, next_sprint_data)
 
             data = {
                 'response_type': 'in_channel',
@@ -532,9 +545,8 @@ def sprint_report():
     if 'help' in request_text:
         response_text = (
             'Use this generate sprint report information\n' +
-            'Call it with just a team name (i.e., `/sprint-report YOSHI`) to use the currently open sprint for that board.\n' +
-            'Call it with a team name and a sprint ID (e.g., `/sprint-report YOSHI 1234 `) to use a specific sprint.\n' +
-            'Call it with a team name, a sprint ID and a Notion URL to update that page with sprint data `/sprint-report YOSHI 1234 https://www.notion.so/mediaos/Sprint-22-Review-3edba77b45d2492592286df310b0c819#5217e0db2a914026a5e433ed0901`.\n' 
+            'Call it with a sprint ID (e.g., `/sprint-report 1234 `) to get data for that sprint.\n' +
+            'Call it with the current sprint ID, the next sprint ID, and a Notion URL to update that page with sprint report data `/sprint-report 1234 1235 https://www.notion.so/mediaos/Sprint-22-Review-3edba77b45d2492592286df310b0c819#5217e0db2a914026a5e433ed0901`.\n'
         )
 
         return jsonify(

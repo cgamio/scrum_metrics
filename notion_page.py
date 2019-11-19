@@ -34,6 +34,10 @@ class NotionPage:
         if "[sprint-goal]" in replacement_dictionary:
             checkSprintGoals = True
 
+        checkNextSprintGoals = False
+        if "[next-sprint-goal]" in replacement_dictionary:
+            checkNextSprintGoals = True
+
         while queue:
             block = queue.pop()
             print(f"Processing Block: {block}")
@@ -48,6 +52,15 @@ class NotionPage:
                     parent = block.parent
                     print(f"Parent: {parent}")
                     for goal in replacement_dictionary['[sprint-goal]'].split("\n"):
+                        new_block = parent.children.add_new(TodoBlock, title=goal)
+                        new_block.move_to(block, "before")
+                    block.remove()
+                    continue
+
+                if checkNextSprintGoals and "[next-sprint-goal]" in block.title:
+                    parent = block.parent
+                    print(f"Parent: {parent}")
+                    for goal in replacement_dictionary['[next-sprint-goal]'].split("\n"):
                         new_block = parent.children.add_new(TodoBlock, title=goal)
                         new_block.move_to(block, "before")
                     block.remove()
