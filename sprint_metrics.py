@@ -411,6 +411,7 @@ def updateNotionPage(url, sprintdata, next_sprint_data=False):
     print(f"URL: {url}")
     page = NotionPage(url)
     page.searchAndReplace(dict)
+    page.blocks.title = f"{dict['[team-name]']} Sprint {dict['[sprint-number]']} Report"
 
 def get_sprint_report_slack_blocks(data):
     blocks = []
