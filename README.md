@@ -107,3 +107,8 @@ So far the available "short codes" are:
 - [sprint-number]
 - [sprint-start]
 - [team-name]
+- [next-points-committed]
+- [next-sprint-end]
+- [next-sprint-goal]
+- [next-sprint-number]
+- [next-sprint-start]": "11/06/2019",
