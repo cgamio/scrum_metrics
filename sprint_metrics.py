@@ -394,8 +394,13 @@ def collectSprintData(sprintID):
 
     meta = {}
     meta['average_velocity'] = int(getAvgVelocity(sprint_data['board_id'], sprint_data['sprint_id']))
-    meta['predictability'] = int(sprint_data['metrics']['points']['completed']/sprint_data['metrics']['points']['committed']*100)
-    meta['predictability_of_commitments'] = int(sprint_data['metrics']['points']['planned_completed']/sprint_data['metrics']['points']['committed']*100)
+
+    if sprint_data['metrics']['points']['committed'] > 0:
+        meta['predictability'] = int(sprint_data['metrics']['points']['completed']/sprint_data['metrics']['points']['committed']*100)
+        meta['predictability_of_commitments'] = int(sprint_data['metrics']['points']['planned_completed']/sprint_data['metrics']['points']['committed']*100)
+    else:
+        meta['predictability'] = "NA"
+        meta['predictability_of_commitments'] = "NA"
 
     sprint_data['metrics']['meta'] = meta
 
