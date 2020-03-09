@@ -56,7 +56,7 @@ google_entry_translations = {
     }
 },
 #TODO: We're assuming that the project name IS the team name, which isn't always the case
-"project_name": "entry.1082637073",
+"project_key": "entry.1082637073",
 "sprint_number": "entry.1975251686"
 }
 
@@ -67,9 +67,7 @@ def getSprintReportURL(project_key, board_id, sprint_id):
 def generateGoogleFormURL(sprint_data):
     url = f"{google_view_form_url}?"
 
-    for entry in ["project_name", "sprint_number"]:
-        sprint_data[entry] = re.sub(r'[^\w ]', '', sprint_data[entry])
-        sprint_data[entry] = urllib.parse.quote(sprint_data[entry])
+    for entry in ["project_key", "sprint_number"]:
         url += f"{google_entry_translations[entry]}={sprint_data[entry]}&"
 
     for metric_type in sprint_data['metrics'].keys():
@@ -363,9 +361,10 @@ def collectSprintData(sprintID):
     board = getBoardById(sprint_data['board_id'])
     sprint_data['board_name'] = board['name']
     sprint_data['project_name'] = board["location"]["projectName"]
+    sprint_data['project_key'] = board['location']['projectKey']
 
     sprint_data['sprint_id'] = current_sprint['id']
-    sprint_data['sprint_report_url'] = getSprintReportURL(sprint_data['project_name'], sprint_data['board_id'], sprint_data['sprint_id'])
+    sprint_data['sprint_report_url'] = getSprintReportURL(sprint_data['project_key'], sprint_data['board_id'], sprint_data['sprint_id'])
 
     # Future sprints don't have start / end dates and that's ok!
     try:
