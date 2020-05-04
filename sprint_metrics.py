@@ -182,7 +182,7 @@ def getSprintMetrics(sprint_report):
         unplanned = False
         if completed["key"] in sprint_report["contents"]["issueKeysAddedDuringSprint"].keys():
             unplanned = True
-            points["unplanned_completed"] += issue_points_original
+            points["unplanned_completed"] += issue_points
             items["unplanned_completed"] += 1
         else:
             issue_keys["committed"].append(completed["key"])
@@ -374,7 +374,7 @@ def collectSprintData(sprintID):
         print("Assuming this is a future sprint since the start / end dates aren't set")
 
     try:
-        sprint_data['sprint_number'] = re.search("(S|Sprint )(?P<number>\d+)", current_sprint["name"]).group('number')
+        sprint_data['sprint_number'] = re.search("(?i)(S|Sprint )(?P<number>\d+)", current_sprint["name"]).group('number')
     except:
         raise Exception("I couldn't determine the sprint number from that sprint's name")
 
